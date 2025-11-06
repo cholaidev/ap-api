@@ -9,20 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up(): void
- {
+  public function up(): void
+  { 
     Schema::create('customers', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
         $table->string('name');
-        $table->string('phone')->nullable();
-        $table->string('email')->nullable();
-        $table->string('location')->nullable();
-        $table->decimal('latitude', 10, 7)->nullable();
-        $table->decimal('longitude', 10, 7)->nullable();
+        $table->string('phone')->unique();
+        $table->text('address')->nullable();
+        $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null');
         $table->timestamps();
     });
-  }
+   }
 
     /**
      * Reverse the migrations.
