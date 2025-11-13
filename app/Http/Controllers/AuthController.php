@@ -35,28 +35,38 @@ class AuthController extends Controller
 
     // 🔐 Login
     public function login(Request $request)
-{
-    $request->validate([
-        'login' => 'required|string', // can be email or phone
-        'password' => 'required|string',
-    ]);
+    {
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'password' => 'required|string',
+            ]);
 
-    $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+            $user = User::where('phone', $request->phone)->first();
 
-    if (!Auth::attempt([$loginField => $request->login, 'password' => $request->password])) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'message' => 'Invalid phone or password',
+                    'success' => false,
+                ], 401);
+            }
+
+            $token = $user->createToken('api_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login successful',
+                'success' => true,
+                'token' => $token,
+                'user' => $user,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred during login',
+                'error' => $e->getMessage(),
+                'success' => false,
+            ], 500);
+        }
     }
-
-    $user = Auth::user();
-    $token = $user->createToken('api_token')->plainTextToken;
-
-    return response()->json([
-        'message' => 'Login successful',
-        'token' => $token,
-        'user' => $user,
-    ]);
-}
-
 
     // 🚪 Logout
     public function logout(Request $request)
