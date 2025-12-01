@@ -9,18 +9,31 @@ use Illuminate\Support\Facades\Log;
 class CustomerController extends Controller
 {
     public function index()
-    {
-        try {
-            Log::info('get customers data');
-            $customers = Customer::with(['staff', 'deliveries', 'payments'])->get();
-            Log::info(' customers data'.json_encode( $customers));
-            return response()->json($customers);
+{
+    try {
+        Log::info('Fetching customers data');
 
-        } catch (\Exception $e) {
-            Log::error("Customer index error: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to fetch customers'], 500);
-        }
+        $customers = Customer::with(['staff', 'deliveries', 'payments'])->get();
+
+        Log::info('Customers data: ' . json_encode($customers));
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Customers fetched successfully',
+            'data' => $customers
+        ], 200);
+
+    } catch (\Exception $e) {
+        Log::error("Customer index error: " . $e->getMessage());
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch customers',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
 
     public function store(Request $request)
     {

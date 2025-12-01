@@ -15,6 +15,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::get('/customers', [CustomerController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/customers', [CustomerController::class, 'store'])->middleware('auth:sanctum');
 
 // 👤 Get current authenticated user
 Route::get('/user', function (Request $request) {
