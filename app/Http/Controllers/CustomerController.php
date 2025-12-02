@@ -13,7 +13,7 @@ public function index()
     try {
         Log::info('Fetching customers');
 
-        $customers = Customer::all();
+         $customers = Customer::orderBy('id', 'DESC')->get();
 
         return response()->json([
             'status' => true,
@@ -59,7 +59,8 @@ public function index()
     public function show($id)
     {
         try {
-            $customer = Customer::with(['staff', 'deliveries', 'payments'])->findOrFail($id);
+            Log::info('get customer data '.$id);
+            $customer = Customer::findOrFail($id);
             return response()->json($customer);
 
         } catch (\Exception $e) {

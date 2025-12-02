@@ -19,7 +19,8 @@ return new class extends Migration
         $table->string('house_name')->nullable();    
         $table->string('location')->nullable();       
         $table->string('milk')->nullable();          
-        $table->integer('quantity')->nullable();    
+        $table->integer('quantity')->nullable(); 
+        $table->integer('is_active')->default(1);   
 
         $table->timestamps();
     });

@@ -16,6 +16,7 @@ class Customer extends Model
         'location',
         'milk',
         'quantity',
+        'is_active'
     ];
 }
 

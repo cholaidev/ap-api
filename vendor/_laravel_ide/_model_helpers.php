@@ -11,10 +11,12 @@ namespace App\Models {
      * @property string|null $milk
      * @property string|null $location
      * @property string|null $house_name
+     * @property string $phone
      * @property string|null $name
      * @property int $id
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereName($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer wherePhone($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereHouseName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereLocation($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereMilk($value)
