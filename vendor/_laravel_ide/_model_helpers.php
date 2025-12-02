@@ -7,21 +7,18 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
-     * @property mixed $assigned_to
-     * @property string|null $address
-     * @property string $phone
-     * @property string $name
+     * @property mixed $quantity
+     * @property string|null $milk
+     * @property string|null $location
+     * @property string|null $house_name
+     * @property string|null $name
      * @property int $id
-     * @property-read \App\Models\User $staff
-     * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Delivery> $deliveries
-     * @property-read int|null $deliveries_count
-     * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Payment> $payments
-     * @property-read int|null $payments_count
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereName($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer wherePhone($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereAddress($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereAssignedTo($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereHouseName($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereLocation($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereMilk($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereQuantity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer newModelQuery()

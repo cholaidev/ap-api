@@ -8,23 +8,20 @@ use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
 {
-    public function index()
+public function index()
 {
     try {
-        Log::info('Fetching customers data');
+        Log::info('Fetching customers');
 
-        $customers = Customer::with(['staff', 'deliveries', 'payments'])->get();
-
-        Log::info('Customers data: ' . json_encode($customers));
+        $customers = Customer::all();
 
         return response()->json([
             'status' => true,
-            'message' => 'Customers fetched successfully',
+            'message' => 'Customers loaded successfully',
             'data' => $customers
-        ], 200);
-
+        ]);
     } catch (\Exception $e) {
-        Log::error("Customer index error: " . $e->getMessage());
+        Log::error("Customer index error: ".$e->getMessage());
 
         return response()->json([
             'status' => false,
@@ -35,24 +32,29 @@ class CustomerController extends Controller
 }
 
 
+
     public function store(Request $request)
     {
-        try {
-            $data = $request->validate([
-                'name' => 'required|string',
-                'phone' => 'required|string|unique:customers',
-                'address' => 'nullable|string',
-                'assigned_to' => 'nullable|exists:users,id',
-            ]);
+    try {
+        $customer = Customer::create($request->all());
 
-            $customer = Customer::create($data);
-            return response()->json(['message' => 'Customer created', 'data' => $customer]);
+        return response()->json([
+            'status' => true,
+            'message' => 'Customer created successfully',
+            'data' => $customer,
+        ]);
 
-        } catch (\Exception $e) {
-            Log::error("Customer store error: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to create customer'], 500);
-        }
+    } catch (\Exception $e) {
+        Log::error("Customer store error: ".$e->getMessage());
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to create customer',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     public function show($id)
     {
@@ -66,37 +68,50 @@ class CustomerController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        try {
-            $customer = Customer::findOrFail($id);
+   public function update(Request $request, $id)
+{
+    try {
+        $customer = Customer::findOrFail($id);
 
-            $data = $request->validate([
-                'name' => 'sometimes|string',
-                'phone' => 'sometimes|string|unique:customers,phone,' . $id,
-                'address' => 'nullable|string',
-                'assigned_to' => 'nullable|exists:users,id',
-            ]);
+        $customer->update($request->all());
 
-            $customer->update($data);
+        return response()->json([
+            'status' => true,
+            'message' => 'Customer updated successfully',
+            'data' => $customer,
+        ]);
 
-            return response()->json(['message' => 'Customer updated', 'data' => $customer]);
+    } catch (\Exception $e) {
+        Log::error("Customer update error: ".$e->getMessage());
 
-        } catch (\Exception $e) {
-            Log::error("Customer update error: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to update customer'], 500);
-        }
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to update customer',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
-    public function destroy($id)
-    {
-        try {
-            Customer::findOrFail($id)->delete();
-            return response()->json(['message' => 'Customer deleted']);
 
-        } catch (\Exception $e) {
-            Log::error("Customer destroy error: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to delete customer'], 500);
-        }
+   public function destroy($id)
+{
+    try {
+        Customer::findOrFail($id)->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Customer deleted successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error("Customer delete error: ".$e->getMessage());
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to delete customer',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 }
