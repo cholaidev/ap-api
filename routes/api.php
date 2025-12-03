@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\EmployeeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -19,6 +20,16 @@ Route::post('/customers', [CustomerController::class, 'store'])->middleware('aut
 Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('auth:sanctum');
 Route::put('/customers/{id}', [CustomerController::class, 'update'])->middleware('auth:sanctum');
 Route::delete('/customers/{id}', [CustomerController::class, 'destroy'])->middleware('auth:sanctum');
+
+
+Route::prefix('employees')->group(function () {
+    Route::get('/', [EmployeeController::class, 'index']);
+    Route::get('/{id}', [EmployeeController::class, 'show']);
+    Route::post('/', [EmployeeController::class, 'store']);
+    Route::put('/{id}', [EmployeeController::class, 'update']);
+    Route::delete('/{id}', [EmployeeController::class, 'destroy']);
+});
+
 
 // 👤 Get current authenticated user
 Route::get('/user', function (Request $request) {
