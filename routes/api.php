@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\SupplyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
 use Illuminate\Http\Request;
@@ -30,6 +31,8 @@ Route::prefix('employees')->group(function () {
     Route::delete('/{id}', [EmployeeController::class, 'destroy']);
 });
 
+
+Route::apiResource('supplies', SupplyController::class);
 
 // 👤 Get current authenticated user
 Route::get('/user', function (Request $request) {
