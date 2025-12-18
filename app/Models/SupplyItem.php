@@ -6,13 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupplyItem extends Model
 {
+
+    protected $table = 'supply_items';
+
     protected $fillable = [
         'supply_id',
+        'employee_id',
         'customer_id',
         'milk',
         'quantity',
         'price_per_liter',
         'amount',
+        'is_delivered'
     ];
 
     protected $casts = [

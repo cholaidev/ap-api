@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Supply;
-use App\Models\SupplyItem;
+use App\Models\SupplyItem; 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use DB;
 
@@ -14,20 +14,55 @@ class SupplyController extends Controller
      * Supply List
      */
     public function index()
-    {
-        return Supply::with(['employee', 'items.customer'])
+{
+    try {
+        Log::info('Supply list fetched');
+
+        $supplies = Supply::with(['employee', 'items.customer'])
             ->latest()
             ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supplies fetched successfully',
+            'data' => $supplies,
+        ], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Supply fetch failed', [
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch supplies',
+        ], 500);
     }
+}
+
 
     /**
      * Create Supply
      */
-    public function store(Request $request)
-    {
+  public function store(Request $request)
+{
+    try {
+        
+        Log::info('Supply Store Input Data', $request->all());
+
+      
+        if ($request->has('employee.id')) {
+            $request->merge([
+                'employee_id' => $request->input('employee.id'),
+            ]);
+        }
+
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'supply_date' => 'nullable|date',
+            'total_quantity' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+
             'items' => 'required|array|min:1',
             'items.*.customer_id' => 'required|exists:customers,id',
             'items.*.milk' => 'nullable|string',
@@ -37,44 +72,67 @@ class SupplyController extends Controller
 
         return DB::transaction(function () use ($data) {
 
+            // 🔹 Create supply
             $supply = Supply::create([
-                'employee_id' => $data['employee_id'],
-                'supply_date' => $data['supply_date'] ?? now(),
+                'employee_id'   => $data['employee_id'],
+                'supply_date'   => $data['supply_date'] ?? now(),
+                'total_quantity'=> $data['total_quantity'],
+                'total_amount'  => $data['total_amount'],
             ]);
 
-            $totalQty = 0;
-            $totalAmount = 0;
-
+            // 🔹 Create supply items
             foreach ($data['items'] as $item) {
-                $qty = $item['quantity'] ?? 0;
+                $qty    = $item['quantity'] ?? 0;
                 $price = $item['price_per_liter'] ?? 0;
-                $amount = $qty * $price;
 
                 SupplyItem::create([
-                    'supply_id' => $supply->id,
-                    'customer_id' => $item['customer_id'],
-                    'milk' => $item['milk'] ?? null,
-                    'quantity' => $qty,
+                    'supply_id'       => $supply->id,
+                    'employee_id'   => $data['employee_id'],
+                    'customer_id'     => $item['customer_id'],
+                    'milk'            => $item['milk'] ?? null,
+                    'quantity'        => $qty,
                     'price_per_liter' => $price,
-                    'amount' => $amount,
+                    'amount'          => $qty * $price,
                 ]);
-
-                $totalQty += $qty;
-                $totalAmount += $amount;
             }
 
-            $supply->update([
-                'total_quantity' => $totalQty,
-                'total_amount' => $totalAmount,
+            Log::info('Supply Created Successfully', [
+                'supply_id' => $supply->id,
             ]);
 
             return response()->json([
                 'message' => 'Supply created successfully',
-                'supply' => $supply->load('items.customer'),
+                'supply'  => $supply->load('items.customer'),
             ], 201);
         });
-    }
 
+    } catch (\Illuminate\Validation\ValidationException $e) {
+
+        Log::error('Supply Validation Error', [
+            'errors' => $e->errors(),
+            'input'  => $request->all(),
+        ]);
+
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors'  => $e->errors(),
+        ], 422);
+
+    } catch (\Throwable $e) {
+
+        Log::critical('Supply Store Exception', [
+            'message' => $e->getMessage(),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+            'trace'   => $e->getTraceAsString(),
+            'input'   => $request->all(),
+        ]);
+
+        return response()->json([
+            'message' => 'Something went wrong while creating supply',
+        ], 500);
+    }
+}
     /**
      * Supply Details
      */

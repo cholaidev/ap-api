@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\SupplyController;
+use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
 use Illuminate\Http\Request;
@@ -29,6 +29,14 @@ Route::prefix('employees')->group(function () {
     Route::post('/', [EmployeeController::class, 'store']);
     Route::put('/{id}', [EmployeeController::class, 'update']);
     Route::delete('/{id}', [EmployeeController::class, 'destroy']);
+});
+
+Route::prefix('supplies')->group(function () {
+    Route::get('/', [SupplyController::class, 'index']);
+    Route::get('/{id}', [SupplyController::class, 'show']);
+    Route::post('/', [SupplyController::class, 'store']);
+    Route::put('/{id}', [SupplyController::class, 'update']);
+    Route::delete('/{id}', [SupplyController::class, 'destroy']);
 });
 
 
