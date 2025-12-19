@@ -21,6 +21,8 @@ Route::post('/customers', [CustomerController::class, 'store'])->middleware('aut
 Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('auth:sanctum');
 Route::put('/customers/{id}', [CustomerController::class, 'update'])->middleware('auth:sanctum');
 Route::delete('/customers/{id}', [CustomerController::class, 'destroy'])->middleware('auth:sanctum');
+Route::get('/customer-history/{customer}', [CustomerController::class, 'deliveryHistory']);
+
 
 
 Route::prefix('employees')->group(function () {

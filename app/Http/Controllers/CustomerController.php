@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\SupplyItem;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -114,5 +116,52 @@ public function index()
         ], 500);
     }
 }
+
+public function deliveryHistory(Request $request, $customerId)
+{
+    try {
+        Log::info('Customer delivery history request', [
+            'customer_id' => $customerId,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
+        ]);
+
+        $query = SupplyItem::with(['supply.employee'])
+            ->where('customer_id', $customerId)
+            ->where('is_delivered', 1);
+
+        // ✅ FILTER BY SUPPLY DATE (FROM SUPPLIES TABLE)
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+
+            $query->whereHas('supply', function ($q) use ($from, $to) {
+                $q->whereBetween('supply_date', [$from, $to]);
+            });
+        }
+
+        $items = $query->latest()->get();
+
+        Log::info('Customer delivery history result', [
+            'count' => $items->count(),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'data' => $items,
+        ], 200);
+
+    } catch (\Throwable $e) {
+        Log::error('Customer delivery history failed', [
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch delivery history',
+        ], 500);
+    }
+}
+
 
 }

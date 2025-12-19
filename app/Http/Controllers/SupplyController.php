@@ -7,30 +7,57 @@ use App\Models\SupplyItem;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use DB;
+use Carbon\Carbon;
 
 class SupplyController extends Controller
 {
     /**
      * Supply List
      */
-    public function index()
+
+
+public function index(Request $request)
 {
     try {
-        Log::info('Supply list fetched');
+        Log::info('📦 Supply list request received', [
+            'from_date' => $request->from_date,
+            'to_date'   => $request->to_date,
+        ]);
 
-        $supplies = Supply::with(['employee', 'items.customer'])
-            ->latest()
-            ->get();
+        $query = Supply::with(['employee', 'items.customer']);
+
+        // 🔹 Apply date range filter if provided
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+
+            $query->whereBetween('supply_date', [$from, $to]);
+
+            Log::info('📅 Supply date filter applied', [
+                'from' => $from->toDateTimeString(),
+                'to'   => $to->toDateTimeString(),
+            ]);
+        } else {
+            Log::info('ℹ️ No date filter applied — returning all supplies');
+        }
+
+        $supplies = $query->latest()->get();
+
+        Log::info('✅ Supplies fetched successfully', [
+            'count' => $supplies->count(),
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Supplies fetched successfully',
-            'data' => $supplies,
+            'data'    => $supplies,
         ], 200);
 
-    } catch (\Exception $e) {
-        Log::error('Supply fetch failed', [
+    } catch (\Throwable $e) {
+
+        Log::error('❌ Supply fetch failed', [
             'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
         ]);
 
         return response()->json([
@@ -39,6 +66,7 @@ class SupplyController extends Controller
         ], 500);
     }
 }
+
 
 
     /**
@@ -141,7 +169,7 @@ class SupplyController extends Controller
     try {
         Log::info("Supply details requested", ['supply_id' => $id]);
 
-        $supply = Supply::with(['employee', 'items.customer'])
+        $supply = Supply::with(['employee', 'items','items.customer'])
             ->findOrFail($id);
 
         return response()->json([
