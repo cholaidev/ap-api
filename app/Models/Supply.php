@@ -20,13 +20,14 @@ class Supply extends Model
         'total_amount' => 'float',
     ];
 
-    public function employee()
+   public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class, 'employee_id', 'id');
     }
 
+  
     public function items()
     {
-        return $this->hasMany(SupplyItem::class);
+        return $this->hasMany(SupplyItem::class, 'supply_id', 'id');
     }
 }

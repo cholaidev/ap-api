@@ -136,69 +136,163 @@ class SupplyController extends Controller
     /**
      * Supply Details
      */
-    public function show(Supply $supply)
-    {
-        return $supply->load(['employee', 'items.customer']);
+    public function show($id)
+{
+    try {
+        Log::info("Supply details requested", ['supply_id' => $id]);
+
+        $supply = Supply::with(['employee', 'items.customer'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supply details fetched successfully',
+            'data' => $supply,
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::warning("Supply not found", ['supply_id' => $id]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Supply not found',
+        ], 404);
+
+    } catch (\Exception $e) {
+        Log::error("Supply fetch failed", [
+            'supply_id' => $id,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch supply details',
+        ], 500);
     }
+}
 
     /**
      * Update Supply (edit customers, quantities, employee)
      */
-    public function update(Request $request, Supply $supply)
-    {
+   
+
+public function update(Request $request)
+{
+    try {
+
+        Log::info('Supply Update Input Data', $request->all());
+
+        // 🔹 Map employee.id → employee_id
+        if ($request->has('employee.id')) {
+            $request->merge([
+                'employee_id' => $request->input('employee.id'),
+            ]);
+        }
+
+        // 🔹 Validate input
         $data = $request->validate([
+            'supply_id'   => 'required|exists:supplies,id',
             'employee_id' => 'required|exists:employees,id',
-            'is_supplied' => 'boolean',
+            'supply_date' => 'nullable|date',
+
             'items' => 'required|array|min:1',
             'items.*.customer_id' => 'required|exists:customers,id',
             'items.*.milk' => 'nullable|string',
             'items.*.quantity' => 'nullable|numeric|min:0',
             'items.*.price_per_liter' => 'nullable|numeric|min:0',
         ]);
+        Log::info('inputs data '.json_encode($data));
+        // 🔹 Fetch supply from payload ID
+        $supply = Supply::findOrFail($data['supply_id']);
 
-        return DB::transaction(function () use ($supply, $data) {
+        DB::beginTransaction();
 
-            $supply->items()->delete();
+        Log::info('Supply update started', [
+            'supply_id' => $supply->id,
+        ]);
 
-            $totalQty = 0;
-            $totalAmount = 0;
+        // 🔥 Delete old items
+        $supply->items()->delete();
 
-            foreach ($data['items'] as $item) {
-                $qty = $item['quantity'] ?? 0;
-                $price = $item['price_per_liter'] ?? 0;
-                $amount = $qty * $price;
+        $totalQty = 0;
+        $totalAmount = 0;
 
-                SupplyItem::create([
-                    'supply_id' => $supply->id,
-                    'customer_id' => $item['customer_id'],
-                    'milk' => $item['milk'],
-                    'quantity' => $qty,
-                    'price_per_liter' => $price,
-                    'amount' => $amount,
-                ]);
+        // 🔹 Recreate items
+        foreach ($data['items'] as $item) {
 
-                $totalQty += $qty;
-                $totalAmount += $amount;
-            }
+            $qty   = $item['quantity'] ?? 0;
+            $price = $item['price_per_liter'] ?? 0;
+            $amount = $qty * $price;
 
-            $supply->update([
-                'employee_id' => $data['employee_id'],
-                'total_quantity' => $totalQty,
-                'total_amount' => $totalAmount,
-                'is_supplied' => $data['is_supplied'] ?? false,
+            SupplyItem::create([
+                'supply_id'       => $supply->id,
+                'employee_id'    =>  $data['employee_id'],
+                'customer_id'     => $item['customer_id'],
+                'milk'            => $item['milk'] ?? null,
+                'quantity'        => $qty,
+                'price_per_liter' => $price,
+                'amount'          => $amount,
             ]);
 
-            return response()->json([
-                'message' => 'Supply updated successfully',
-            ]);
-        });
+            $totalQty += $qty;
+            $totalAmount += $amount;
+        }
+
+        // 🔄 Update supply master
+        $supply->update([
+            'employee_id'    => $data['employee_id'],
+            'supply_date'    => $data['supply_date'] ?? $supply->supply_date,
+            'total_quantity' => $totalQty,
+            'total_amount'   => $totalAmount,
+        ]);
+
+        DB::commit();
+
+        Log::info('Supply updated successfully', [
+            'supply_id' => $supply->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Supply updated successfully',
+            'supply'  => $supply->load('items.customer'),
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+
+        DB::rollBack();
+
+        Log::error('Supply Update Validation Error', [
+            'errors' => $e->errors(),
+            'input'  => $request->all(),
+        ]);
+
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors'  => $e->errors(),
+        ], 422);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        Log::critical('Supply Update Exception', [
+            'message' => $e->getMessage(),
+            'line'    => $e->getLine(),
+            'file'    => $e->getFile(),
+            'input'   => $request->all(),
+        ]);
+
+        return response()->json([
+            'message' => 'Something went wrong while updating supply',
+        ], 500);
     }
-
+}
     /**
      * Delete Supply
      */
-    public function destroy(Supply $supply)
+    public function destroy($id)
     {
+        $supply = Supply::findOrFail($id);
         $supply->delete();
 
         return response()->json([
