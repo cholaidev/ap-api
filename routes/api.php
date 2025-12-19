@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
@@ -43,6 +44,10 @@ Route::prefix('supplies')->group(function () {
 
 
 Route::apiResource('supplies', SupplyController::class);
+
+Route::get('/settings', [SettingController::class, 'show']);
+Route::post('/settings', [SettingController::class, 'update']);
+
 
 // 👤 Get current authenticated user
 Route::get('/user', function (Request $request) {

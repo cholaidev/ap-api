@@ -120,24 +120,28 @@ class EmployeeController extends Controller
 
     // 🔥 DELETE employee
     public function destroy($id)
-    {
-        try {
-            $employee = Employee::findOrFail($id);
-            $employee->delete();
+{
+    try {
+        $employee = Employee::findOrFail($id);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Employee deleted successfully'
-            ]);
+        $employee->update([
+            'is_active' => 0,
+        ]);
 
-        } catch (\Exception $e) {
-            Log::error("Employee delete error: ".$e->getMessage());
+        return response()->json([
+            'status' => true,
+            'message' => 'Employee deactivated successfully',
+        ], 200);
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Delete failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    } catch (\Exception $e) {
+        Log::error("Employee delete error: " . $e->getMessage());
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Delete failed',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 }

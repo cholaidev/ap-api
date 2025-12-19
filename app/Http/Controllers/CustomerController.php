@@ -96,18 +96,22 @@ public function index()
 }
 
 
-   public function destroy($id)
+ public function destroy($id)
 {
     try {
-        Customer::findOrFail($id)->delete();
+        $customer = Customer::findOrFail($id);
+
+        $customer->update([
+            'is_active' => 0,
+        ]);
 
         return response()->json([
             'status' => true,
-            'message' => 'Customer deleted successfully'
-        ]);
+            'message' => 'Customer deactivated successfully',
+        ], 200);
 
     } catch (\Exception $e) {
-        Log::error("Customer delete error: ".$e->getMessage());
+        Log::error("Customer delete error: " . $e->getMessage());
 
         return response()->json([
             'status' => false,
@@ -116,6 +120,7 @@ public function index()
         ], 500);
     }
 }
+
 
 public function deliveryHistory(Request $request, $customerId)
 {
