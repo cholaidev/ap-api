@@ -643,6 +643,7 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property mixed $user_id
      * @property mixed $is_active
      * @property float|null $given_money
      * @property float|null $salary
@@ -650,6 +651,7 @@ namespace App\Models {
      * @property string $phone
      * @property string|null $name
      * @property int $id
+     * @property-read \App\Models\User $user
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee wherePhone($value)
@@ -657,6 +659,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereSalary($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereGivenMoney($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereIsActive($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereUserId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Employee>|Employee newModelQuery()
@@ -1883,6 +1886,14 @@ namespace App\Models {
     /**
      * App\Models\Setting
      *
+     * @property \Illuminate\Support\Carbon|null $updated_at
+     * @property \Illuminate\Support\Carbon|null $created_at
+     * @property float|null $milk_price
+     * @property int $id
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereId($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereMilkPrice($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereCreatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting newQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting query()
@@ -2813,6 +2824,7 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property mixed $employee_id
      * @property mixed $role
      * @property string $password
      * @property string $phone
@@ -2823,6 +2835,7 @@ namespace App\Models {
      * @property-read int|null $customers_count
      * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Delivery> $deliveries
      * @property-read int|null $deliveries_count
+     * @property-read \App\Models\Employee $employee
      * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
      * @property-read int|null $tokens_count
      * @property-read \Illuminate\Database\Eloquent\Collection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
@@ -2833,6 +2846,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User wherePhone($value)
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User wherePassword($value)
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User whereRole($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<User>|User whereEmployeeId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<User>|User newModelQuery()

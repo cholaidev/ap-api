@@ -15,5 +15,16 @@ class Employee extends Model
         'email',
         'salary',
         'given_money',
+        'user_id'
     ];
+
+
+    public function user()
+{
+    return $this->belongsTo(User::class, 'user_id', 'id');
+}
+
+
+  
+
 }

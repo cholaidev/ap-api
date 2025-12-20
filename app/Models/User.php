@@ -17,6 +17,7 @@ class User extends Authenticatable
         'phone',
         'password',
         'role',
+        'employee_id'
     ];
 
     protected $hidden = ['password'];
@@ -31,4 +32,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Delivery::class, 'staff_id');
     }
+
+    public function employee()
+{
+    return $this->hasOne(Employee::class, 'user_id', 'id');
+}
+
 }

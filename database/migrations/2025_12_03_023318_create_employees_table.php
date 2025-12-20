@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('email')->nullable();        
             $table->decimal('salary', 10, 2)->nullable(); 
             $table->decimal('given_money', 10, 2)->nullable(); 
-            $table->integer('is_active')->default(1);  
+            $table->integer('is_active')->default(1); 
+            $table->unsignedBigInteger('user_id')->nullable(); 
             $table->timestamps();
         });
     }

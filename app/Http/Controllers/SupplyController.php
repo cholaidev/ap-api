@@ -327,4 +327,115 @@ public function update(Request $request)
             'message' => 'Supply deleted successfully',
         ]);
     }
+
+  public function markDelivered(Request $request)
+{
+    try {
+        // ✅ Validate input
+        $data = $request->validate([
+            'employee_id'    => 'required|exists:employees,id',
+            'customer_ids'   => 'required|array|min:1',
+            'customer_ids.*' => 'exists:customers,id',
+        ]);
+
+        Log::info('🚚 Mark delivery request', $data);
+
+        // ✅ Update supply_items directly
+        $updated = SupplyItem::where('employee_id', $data['employee_id'])
+            ->whereIn('customer_id', $data['customer_ids'])
+            ->where('is_delivered', 0)
+            ->update([
+                'is_delivered' => 1,
+                'updated_at'   => now(),
+            ]);
+
+        Log::info('✅ Supply items delivered', [
+            'employee_id' => $data['employee_id'],
+            'customers'   => $data['customer_ids'],
+            'updated'     => $updated,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Supply items delivered successfully',
+            'updated_items' => $updated,
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        Log::error('❌ Mark delivery failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to mark supply items delivered',
+        ], 500);
+    }
+}
+
+
+
+public function getSupplyItems(Request $request)
+{
+    try {
+        Log::info('📦 SupplyItem fetch request', $request->all());
+
+        $request->validate([
+            'employee_id' => 'nullable|exists:employees,id',
+            'from_date'   => 'nullable|date',
+            'to_date'     => 'nullable|date',
+        ]);
+
+        $query = SupplyItem::with([
+            'customer',
+            'supply',          // contains supply_date, totals
+            'supply.employee', // optional but useful for UI
+        ]);
+
+        // 🔹 Filter by employee (DIRECT)
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        // 🔹 Filter by date range (via supply_date)
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+
+            $query->whereHas('supply', function ($q) use ($from, $to) {
+                $q->whereBetween('supply_date', [$from, $to]);
+            });
+        }
+
+        // 🔹 Optional: only pending deliveries
+        if ($request->boolean('pending_only')) {
+            $query->where('is_delivered', 0);
+        }
+
+        $items = $query->latest()->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supply items fetched successfully',
+            'data'    => $items,
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        Log::error('❌ SupplyItem fetch failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch supply items',
+        ], 500);
+    }
+}
+
+
+
 }

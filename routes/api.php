@@ -40,6 +40,10 @@ Route::prefix('supplies')->group(function () {
     Route::post('/', [SupplyController::class, 'store']);
     Route::put('/{id}', [SupplyController::class, 'update']);
     Route::delete('/{id}', [SupplyController::class, 'destroy']);
+    Route::post('/supplies/mark-delivered', [SupplyController::class, 'markDelivered']);
+    Route::get('/supply-items', [SupplyController::class, 'getSupplyItems']);
+
+
 });
 
 

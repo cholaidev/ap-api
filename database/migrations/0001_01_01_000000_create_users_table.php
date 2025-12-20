@@ -18,6 +18,7 @@ return new class extends Migration
         $table->string('phone');
         $table->string('password');
         $table->enum('role', ['admin', 'staff'])->default('staff');
+        $table->unsignedBigInteger('employee_id')->nullable();
         $table->timestamps();
     });
 }
