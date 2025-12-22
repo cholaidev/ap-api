@@ -7,192 +7,237 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeController extends Controller
 {
-    // 🔥 GET all employees (latest first)
+    // 🔥 GET ALL EMPLOYEES
     public function index()
     {
         try {
-            Log::info('Fetching all employees');
-
-            $employees = Employee::latest()->get();
-
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Employees loaded successfully',
-                'data' => $employees
+                'data'    => Employee::latest()->get(),
             ], 200);
-
-        } catch (\Exception $e) {
-            Log::error("Employee index error: ".$e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Employee index error', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Unable to fetch employees',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    // 🔥 GET single employee
+    // 🔥 GET SINGLE EMPLOYEE
     public function show($id)
     {
         try {
-            $employee = Employee::findOrFail($id);
-
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Employee details loaded',
-                'data' => $employee
-            ]);
-
-        } catch (\Exception $e) {
+                'data'    => Employee::with('user')->findOrFail($id),
+            ], 200);
+        } catch (\Throwable $e) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Employee not found',
-                'error' => $e->getMessage()
             ], 404);
         }
     }
 
-
-    
-    // 🔥 ADD employee
+    // 🔥 CREATE EMPLOYEE
     public function store(Request $request)
     {
         try {
+            DB::beginTransaction();
+
+            // ✅ BASIC VALIDATION
             $validated = $request->validate([
-                'name' => 'nullable|string|max:255',
-                'phone' => 'required|unique:employees,phone',
-                'email' => 'nullable|email',
-                'salary' => 'nullable|numeric',
+                'name'        => 'nullable|string|max:255',
+                'phone'       => 'required|string',
+                'salary'      => 'nullable|numeric',
                 'given_money' => 'nullable|numeric',
             ]);
 
-            $employee = Employee::create($validated);
+            // ❌ PHONE EXISTS IN USERS
+            if (User::where('phone', $validated['phone'])->exists()) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This phone number already exists in users.'],
+                ]);
+            }
 
-            $user = User::create([
-                'name' => $validated['name'] ,
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'password' => bcrypt('annapoorani'),
-                'role' => 'staff',
-                'employee_id' => $employee->id
+            // ❌ PHONE EXISTS IN EMPLOYEES
+            if (Employee::where('phone', $validated['phone'])->exists()) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This phone number already exists in employees.'],
+                ]);
+            }
+
+            // ✅ CREATE EMPLOYEE
+            $employee = Employee::create([
+                'name'        => $validated['name'] ?? null,
+                'phone'       => $validated['phone'],
+                'salary'      => $validated['salary'] ?? 0,
+                'given_money' => $validated['given_money'] ?? 0,
+                'is_active'   => 1,
             ]);
 
-            $employee->update([
-            'user_id' => $user->id]);
-           
+            // ✅ CREATE USER
+            $user = User::create([
+                'name'        => $validated['name'] ?? 'Staff',
+                'phone'       => $validated['phone'],
+                'password'    => bcrypt('annapoorani'),
+                'role'        => 'staff',
+                'employee_id' => $employee->id,
+                'is_active'   => 1,
+            ]);
+
+            $employee->update(['user_id' => $user->id]);
+
+            DB::commit();
+
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Employee added successfully',
-                'data' => $employee
+                'data'    => $employee->load('user'),
             ], 201);
-
-        } catch (\Exception $e) {
-            Log::error("Employee store error: ".$e->getMessage());
+        }
+        // ✅ VALIDATION ERROR (422)
+        catch (ValidationException $e) {
+            DB::rollBack();
 
             return response()->json([
-                'status' => false,
+                'status'  => false,
+                'message' => 'Validation failed',
+                'errors'  => $e->errors(),
+            ], 422);
+        }
+        // ❌ SERVER ERROR (500)
+        catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Employee store error', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => false,
                 'message' => 'Employee creation failed',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
 
+    // 🔥 UPDATE EMPLOYEE
+    public function update(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
 
-    // 🔥 UPDATE employee
+            $employee = Employee::with('user')->findOrFail($id);
 
-
-public function update(Request $request, $id)
-{
-    try {
-        DB::beginTransaction();
-
-        $employee = Employee::with('user')->findOrFail($id);
-
-        Log::info('Updating employee', [
-            'employee_id' => $id,
-            'current' => $employee->toArray()
-        ]);
-
-        $validated = $request->validate([
-            'name'        => 'nullable|string|max:255',
-            'phone'       => 'required|unique:employees,phone,' . $id,
-            'email'       => 'nullable|email',
-            'salary'      => 'nullable|numeric',
-            'given_money' => 'nullable|numeric',
-        ]);
-
-        // 🔹 Update Employee
-        $employee->update([
-            'name'        => $validated['name'] ?? $employee->name,
-            'phone'       => $validated['phone'],
-            'email'       => $validated['email'] ?? $employee->email,
-            'salary'      => $validated['salary'] ?? $employee->salary,
-            'given_money' => $validated['given_money'] ?? $employee->given_money,
-        ]);
-
-        // 🔹 Update related User (if exists)
-        if ($employee->user) {
-            $employee->user->update([
-                'name'  => $validated['name'] ?? $employee->user->name,
-                'email' => $validated['email'] ?? $employee->user->email,
-                'phone' => $validated['phone'],
+            $validated = $request->validate([
+                'name'        => 'nullable|string|max:255',
+                'phone'       => 'required|string',
+                'salary'      => 'nullable|numeric',
+                'given_money' => 'nullable|numeric',
             ]);
+
+            // ❌ PHONE EXISTS IN USERS (EXCEPT CURRENT)
+            if (
+                User::where('phone', $validated['phone'])
+                    ->where('employee_id', '!=', $id)
+                    ->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This phone number already exists in users.'],
+                ]);
+            }
+
+            // ❌ PHONE EXISTS IN EMPLOYEES (EXCEPT CURRENT)
+            if (
+                Employee::where('phone', $validated['phone'])
+                    ->where('id', '!=', $id)
+                    ->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This phone number already exists in employees.'],
+                ]);
+            }
+
+            // ✅ UPDATE EMPLOYEE
+            $employee->update([
+                'name'        => $validated['name'] ?? $employee->name,
+                'phone'       => $validated['phone'],
+                'salary'      => $validated['salary'] ?? $employee->salary,
+                'given_money' => $validated['given_money'] ?? $employee->given_money,
+            ]);
+
+            // ✅ UPDATE USER
+            if ($employee->user) {
+                $employee->user->update([
+                    'name'  => $validated['name'] ?? $employee->user->name,
+                    'phone' => $validated['phone'],
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Employee updated successfully',
+                'data'    => $employee->fresh('user'),
+            ], 200);
         }
+        catch (ValidationException $e) {
+            DB::rollBack();
 
-        DB::commit();
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation failed',
+                'errors'  => $e->errors(),
+            ], 422);
+        }
+        catch (\Throwable $e) {
+            DB::rollBack();
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Employee updated successfully',
-            'data'    => $employee->fresh('user'),
-        ], 200);
+            Log::error('Employee update error', ['error' => $e->getMessage()]);
 
-    } catch (\Throwable $e) {
-        DB::rollBack();
-
-        Log::error('Employee update error', [
-            'employee_id' => $id,
-            'error' => $e->getMessage(),
-        ]);
-
-        return response()->json([
-            'status'  => false,
-            'message' => 'Employee update failed',
-            'error'   => $e->getMessage(),
-        ], 500);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Employee update failed',
+            ], 500);
+        }
     }
-}
 
-
-
-    // 🔥 DELETE employee
+    // 🔥 DELETE (SOFT)
     public function destroy($id)
-{
-    try {
-        $employee = Employee::findOrFail($id);
+    {
+        try {
+            DB::beginTransaction();
 
-        $employee->update([
-            'is_active' => 0,
-        ]);
+            $employee = Employee::with('user')->findOrFail($id);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Employee deactivated successfully',
-        ], 200);
+            $employee->update(['is_active' => 0]);
 
-    } catch (\Exception $e) {
-        Log::error("Employee delete error: " . $e->getMessage());
+            if ($employee->user) {
+                $employee->user->update(['is_active' => 0]);
+            }
 
-        return response()->json([
-            'status' => false,
-            'message' => 'Delete failed',
-            'error' => $e->getMessage(),
-        ], 500);
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Employee deactivated successfully',
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Employee delete error', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Employee delete failed',
+            ], 500);
+        }
     }
-}
-
 }
