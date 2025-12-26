@@ -1888,10 +1888,14 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property string|null $supply_date
+     * @property bool $today_supply_generated
      * @property float|null $milk_price
      * @property int $id
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereMilkPrice($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereTodaySupplyGenerated($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereSupplyDate($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Setting>|Setting newModelQuery()
@@ -2191,6 +2195,7 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property bool|null $is_assigned_only
      * @property string|null $supply_date
      * @property boolean $is_supplied
      * @property float $total_amount
@@ -2206,6 +2211,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereTotalAmount($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereIsSupplied($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereSupplyDate($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereIsAssignedOnly($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply newModelQuery()

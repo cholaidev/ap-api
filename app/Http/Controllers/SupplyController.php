@@ -422,7 +422,43 @@ public function assignSupplyDate(Request $request)
             // 🔁 CLONE EACH SUPPLY
             foreach ($initialSupplies as $templateSupply) {
 
+                 $existingSupply = Supply::where('employee_id', $templateSupply->employee_id)
+        ->whereDate('supply_date', $date)
+        ->where('is_assigned_only', 0)
+        ->first();
 
+    if ($existingSupply) {
+        // 🔄 UPDATE EXISTING SUPPLY
+        Log::info('♻️ Updating existing supply', [
+            'supply_id'  => $existingSupply->id,
+            'employee_id'=> $templateSupply->employee_id,
+            'date'       => $date->toDateString(),
+        ]);
+
+        // 🧹 Remove old items
+        $existingSupply->items()->delete();
+
+        // 🔁 Recreate items
+        foreach ($templateSupply->items as $item) {
+            SupplyItem::create([
+                'supply_id'       => $existingSupply->id,
+                'employee_id'     => $item->employee_id,
+                'customer_id'     => $item->customer_id,
+                'milk'            => $item->milk,
+                'quantity'        => $item->quantity,
+                'price_per_liter' => $item->price_per_liter,
+                'amount'          => $item->amount,
+                'is_delivered'    => 0,
+            ]);
+        }
+
+        // 🔄 Update totals
+        $existingSupply->update([
+            'total_quantity' => $templateSupply->total_quantity,
+            'total_amount'   => $templateSupply->total_amount,
+        ]);
+
+           }else{
                 
 
                 // 🆕 CREATE NEW SUPPLY
@@ -453,7 +489,7 @@ public function assignSupplyDate(Request $request)
                     'new_supply_id'      => $newSupply->id,
                 ]);
             }
-
+        }
             // 🔒 LOCK UI (SETTINGS)
             DB::table('settings')->update([
                 'today_supply_generated' => true,
