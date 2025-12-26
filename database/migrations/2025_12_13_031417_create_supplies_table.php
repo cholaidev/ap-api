@@ -20,6 +20,8 @@ return new class extends Migration {
 
             $table->date('supply_date')->nullable();
 
+            $table->boolean('is_assigned_only')->default(0)->nullable();
+
             $table->timestamps();
         });
     }

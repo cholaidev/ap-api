@@ -23,6 +23,8 @@ Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('
 Route::put('/customers/{id}', [CustomerController::class, 'update'])->middleware('auth:sanctum');
 Route::delete('/customers/{id}', [CustomerController::class, 'destroy'])->middleware('auth:sanctum');
 Route::get('/customer-history/{customer}', [CustomerController::class, 'deliveryHistory']);
+Route::post('/customers/bulk-import', [CustomerController::class, 'bulkImport']);
+
 
 
 
@@ -42,6 +44,8 @@ Route::prefix('supplies')->group(function () {
     Route::delete('/{id}', [SupplyController::class, 'destroy']);
     Route::post('/supplies/mark-delivered', [SupplyController::class, 'markDelivered']);
     Route::get('/supply-items', [SupplyController::class, 'getSupplyItems']);
+   Route::post('/supplies/assign-date', [SupplyController::class, 'assignSupplyDate']);
+
 
 
 });
@@ -51,6 +55,8 @@ Route::apiResource('supplies', SupplyController::class);
 
 Route::get('/settings', [SettingController::class, 'show']);
 Route::post('/settings', [SettingController::class, 'update']);
+Route::get('/settings/all', [SettingController::class, 'getSettings']);
+
 
 
 // 👤 Get current authenticated user

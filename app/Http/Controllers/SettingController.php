@@ -48,5 +48,16 @@ class SettingController extends Controller
             'data' => $setting,
         ]);
     }
+
+   public function getSettings()
+{
+    $settings = Setting::first();
+
+    return response()->json([
+        'status' => true,
+        'data' => $settings,
+    ], 200);
+}
+
 }
 

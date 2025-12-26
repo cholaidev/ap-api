@@ -12,6 +12,7 @@ class Supply extends Model
         'total_amount',
         'is_supplied',
         'supply_date',
+        'is_assigned_only'
     ];
 
     protected $casts = [

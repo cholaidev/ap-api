@@ -20,13 +20,26 @@ public function index(Request $request)
 {
     try {
         Log::info('📦 Supply list request received', [
-            'from_date' => $request->from_date,
-            'to_date'   => $request->to_date,
+            'from_date'        => $request->from_date,
+            'to_date'          => $request->to_date,
+            'is_assigned_only' => $request->is_assigned_only,
         ]);
 
         $query = Supply::with(['employee', 'items.customer']);
 
-        // 🔹 Apply date range filter if provided
+        /**
+         * 🔹 FILTER: ONLY ASSIGNED SUPPLIES
+         * is_assigned_only=true → is_assigned = 1
+         */
+        if ($request->boolean('is_assigned_only')) {
+            $query->where('is_assigned_only', 1);
+
+            Log::info('🔐 Filtering only assigned supplies');
+        }
+
+        /**
+         * 🔹 DATE RANGE FILTER
+         */
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $from = Carbon::parse($request->from_date)->startOfDay();
             $to   = Carbon::parse($request->to_date)->endOfDay();
@@ -37,8 +50,6 @@ public function index(Request $request)
                 'from' => $from->toDateTimeString(),
                 'to'   => $to->toDateTimeString(),
             ]);
-        } else {
-            Log::info('ℹ️ No date filter applied — returning all supplies');
         }
 
         $supplies = $query->latest()->get();
@@ -90,7 +101,7 @@ public function index(Request $request)
             'supply_date' => 'nullable|date',
             'total_quantity' => 'required|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
-
+             'is_assigned_only' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.customer_id' => 'required|exists:customers,id',
             'items.*.milk' => 'nullable|string',
@@ -106,6 +117,7 @@ public function index(Request $request)
                 'supply_date'   => $data['supply_date'] ?? now(),
                 'total_quantity'=> $data['total_quantity'],
                 'total_amount'  => $data['total_amount'],
+                'is_assigned_only' => $data['is_assigned_only']
             ]);
 
             // 🔹 Create supply items
@@ -222,7 +234,7 @@ public function update(Request $request)
             'supply_id'   => 'required|exists:supplies,id',
             'employee_id' => 'required|exists:employees,id',
             'supply_date' => 'nullable|date',
-
+            'is_assigned_only' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.customer_id' => 'required|exists:customers,id',
             'items.*.milk' => 'nullable|string',
@@ -377,64 +389,106 @@ public function update(Request $request)
 
 
 
-public function getSupplyItems(Request $request)
+public function assignSupplyDate(Request $request)
 {
     try {
-        Log::info('📦 SupplyItem fetch request', $request->all());
-
-        $request->validate([
-            'employee_id' => 'nullable|exists:employees,id',
-            'from_date'   => 'nullable|date',
-            'to_date'     => 'nullable|date',
+        $data = $request->validate([
+            'supply_date' => 'required|date',
         ]);
 
-        $query = SupplyItem::with([
-            'customer',
-            'supply',          // contains supply_date, totals
-            'supply.employee', // optional but useful for UI
+        $date = Carbon::parse($data['supply_date'])->startOfDay();
+
+        Log::info('📅 Supply generation started', [
+            'date' => $date->toDateString(),
         ]);
 
-        // 🔹 Filter by employee (DIRECT)
-        if ($request->filled('employee_id')) {
-            $query->where('employee_id', $request->employee_id);
-        }
+        return DB::transaction(function () use ($date) {
 
-        // 🔹 Filter by date range (via supply_date)
-        if ($request->filled('from_date') && $request->filled('to_date')) {
-            $from = Carbon::parse($request->from_date)->startOfDay();
-            $to   = Carbon::parse($request->to_date)->endOfDay();
+            // 🔒 STOP if already generated for this date
+         
 
-            $query->whereHas('supply', function ($q) use ($from, $to) {
-                $q->whereBetween('supply_date', [$from, $to]);
-            });
-        }
+            // 🔹 GET ALL INITIAL (TEMPLATE) SUPPLIES
+            $initialSupplies = Supply::where('is_assigned_only', 1)
+                ->with('items')
+                ->get();
 
-        // 🔹 Optional: only pending deliveries
-        if ($request->boolean('pending_only')) {
-            $query->where('is_delivered', 0);
-        }
+            if ($initialSupplies->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No initial supplies found',
+                ], 422);
+            }
 
-        $items = $query->latest()->get();
+            Log::info('♻️ Initial supplies found', [
+                'count' => $initialSupplies->count(),
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Supply items fetched successfully',
-            'data'    => $items,
-        ], 200);
+            // 🔁 CLONE EACH SUPPLY
+            foreach ($initialSupplies as $templateSupply) {
+
+                // 🆕 CREATE NEW SUPPLY
+                $newSupply = Supply::create([
+                    'employee_id'    => $templateSupply->employee_id,
+                    'supply_date'    => $date,
+                    'total_quantity' => $templateSupply->total_quantity,
+                    'total_amount'   => $templateSupply->total_amount,
+                    'is_assigned_only'    => 0,
+                ]);
+
+                // 🔁 CLONE SUPPLY ITEMS
+                foreach ($templateSupply->items as $item) {
+                    SupplyItem::create([
+                        'supply_id'       => $newSupply->id,
+                        'employee_id'     => $item->employee_id,
+                        'customer_id'     => $item->customer_id,
+                        'milk'            => $item->milk,
+                        'quantity'        => $item->quantity,
+                        'price_per_liter' => $item->price_per_liter,
+                        'amount'          => $item->amount,
+                        'is_delivered'    => 0,
+                    ]);
+                }
+
+                Log::info('✅ Supply cloned', [
+                    'template_supply_id' => $templateSupply->id,
+                    'new_supply_id'      => $newSupply->id,
+                ]);
+            }
+
+            // 🔒 LOCK UI (SETTINGS)
+            DB::table('settings')->update([
+                'today_supply_generated' => true,
+                'supply_date'            => $date,
+                'updated_at'             => now(),
+            ]);
+
+            Log::info('🔒 Supply generation completed', [
+                'date' => $date->toDateString(),
+            ]);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Supply generated successfully',
+                'date'    => $date->toDateString(),
+                'supplies_created' => $initialSupplies->count(),
+            ], 200);
+        });
 
     } catch (\Throwable $e) {
 
-        Log::error('❌ SupplyItem fetch failed', [
+        Log::critical('🔥 Supply generation failed', [
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
         ]);
 
         return response()->json([
-            'success' => false,
-            'message' => 'Failed to fetch supply items',
+            'status' => false,
+            'message' => 'Failed to generate supply',
         ], 500);
     }
 }
+
+
 
 
 

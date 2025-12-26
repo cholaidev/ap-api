@@ -186,4 +186,100 @@ class CustomerController extends Controller
             ], 500);
         }
     }
+
+   public function bulkImport(Request $request)
+{
+    Log::info('Customer bulk import started');
+
+    try {
+        $request->validate([
+            'customers' => 'required|array|min:1',
+            'customers.*.phone' => 'required|string',
+        ]);
+
+        $customers = $request->customers;
+        $total = count($customers);
+
+        Log::info('Bulk import request received', [
+            'total_records' => $total,
+        ]);
+
+        $inserted = 0;
+        $skipped = 0;
+        $skippedPhones = [];
+
+        foreach ($customers as $index => $row) {
+
+            // 🔴 Skip if phone already exists
+            if (Customer::where('phone', $row['phone'])->exists()) {
+                $skipped++;
+                $skippedPhones[] = $row['phone'];
+
+                Log::warning('Customer skipped (duplicate phone)', [
+                    'row' => $index + 1,
+                    'phone' => $row['phone'],
+                ]);
+
+                continue;
+            }
+
+            // ✅ Create customer
+            $customer = Customer::create([
+                'name'       => $row['name'] ?? null,
+                'phone'      => $row['phone'],
+                'house_name' => $row['house'] ?? null,
+                'milk'       => $row['milk'] ?? null,
+                'quantity'   => $row['quantity'] ?? null,
+                'location'   => $row['location'] ?? null,
+                'is_active'  => 1,
+            ]);
+
+            $inserted++;
+
+            Log::info('Customer inserted successfully', [
+                'customer_id' => $customer->id,
+                'phone' => $customer->phone,
+            ]);
+        }
+
+        Log::info('Customer bulk import completed', [
+            'total' => $total,
+            'inserted' => $inserted,
+            'skipped' => $skipped,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Bulk import completed',
+            'inserted' => $inserted,
+            'skipped' => $skipped,
+            'skipped_phones' => $skippedPhones,
+        ], 200);
+
+    } catch (ValidationException $e) {
+
+        Log::warning('Customer bulk import validation failed', [
+            'errors' => $e->errors(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Validation failed',
+            'errors' => $e->errors(),
+        ], 422);
+
+    } catch (\Throwable $e) {
+
+        Log::error('Customer bulk import crashed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Bulk import failed',
+        ], 500);
+    }
+}
+
 }

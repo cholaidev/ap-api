@@ -2828,7 +2828,7 @@ namespace App\Models {
      * @property mixed $role
      * @property string $password
      * @property string $phone
-     * @property string $email
+     * @property string|null $email
      * @property string $name
      * @property int $id
      * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Customer> $customers

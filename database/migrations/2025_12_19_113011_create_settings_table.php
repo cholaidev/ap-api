@@ -10,6 +10,8 @@ return new class extends Migration {
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
             $table->decimal('milk_price', 10, 2)->nullable();
+            $table->boolean('today_supply_generated')->default(false);
+            $table->date('supply_date')->nullable();
             $table->timestamps();
         });
     }
