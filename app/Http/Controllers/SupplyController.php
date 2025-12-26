@@ -28,13 +28,19 @@ public function index(Request $request)
         $query = Supply::with(['employee', 'items.customer']);
 
         /**
-         * 🔹 FILTER: ONLY ASSIGNED SUPPLIES
-         * is_assigned_only=true → is_assigned = 1
+         * 🔹 FILTER BY ASSIGNED / TEMPLATE
+         * is_assigned_only = 1 → TEMPLATE supplies
+         * is_assigned_only = 0 → GENERATED supplies
          */
-        if ($request->boolean('is_assigned_only')) {
-            $query->where('is_assigned_only', 1);
+        if ($request->has('is_assigned_only')) {
+            $query->where(
+                'is_assigned_only',
+                (int) $request->is_assigned_only
+            );
 
-            Log::info('🔐 Filtering only assigned supplies');
+            Log::info('🔐 is_assigned_only filter applied', [
+                'value' => (int) $request->is_assigned_only,
+            ]);
         }
 
         /**
@@ -45,18 +51,9 @@ public function index(Request $request)
             $to   = Carbon::parse($request->to_date)->endOfDay();
 
             $query->whereBetween('supply_date', [$from, $to]);
-
-            Log::info('📅 Supply date filter applied', [
-                'from' => $from->toDateTimeString(),
-                'to'   => $to->toDateTimeString(),
-            ]);
         }
 
         $supplies = $query->latest()->get();
-
-        Log::info('✅ Supplies fetched successfully', [
-            'count' => $supplies->count(),
-        ]);
 
         return response()->json([
             'success' => true,
@@ -65,10 +62,8 @@ public function index(Request $request)
         ], 200);
 
     } catch (\Throwable $e) {
-
         Log::error('❌ Supply fetch failed', [
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
         ]);
 
         return response()->json([
@@ -77,6 +72,7 @@ public function index(Request $request)
         ], 500);
     }
 }
+
 
 
 
@@ -425,6 +421,9 @@ public function assignSupplyDate(Request $request)
 
             // 🔁 CLONE EACH SUPPLY
             foreach ($initialSupplies as $templateSupply) {
+
+
+                
 
                 // 🆕 CREATE NEW SUPPLY
                 $newSupply = Supply::create([

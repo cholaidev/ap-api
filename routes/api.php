@@ -44,7 +44,7 @@ Route::prefix('supplies')->group(function () {
     Route::delete('/{id}', [SupplyController::class, 'destroy']);
     Route::post('/supplies/mark-delivered', [SupplyController::class, 'markDelivered']);
     Route::get('/supply-items', [SupplyController::class, 'getSupplyItems']);
-   Route::post('/supplies/assign-date', [SupplyController::class, 'assignSupplyDate']);
+    Route::post('/assign-date', [SupplyController::class, 'assignSupplyDate']);
 
 
 
