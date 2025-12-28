@@ -1,0 +1,14 @@
+services:
+  mysql-milk:
+    image: mysql:8.0
+    container_name: mysql-milk
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: milk-db
+      MYSQL_USER: milk-user
+      MYSQL_PASSWORD: milkpass123
+    restart: unless-stopped
+    volumes:
+      - /mnt/immich/milk-api/:/var/lib/mysql
