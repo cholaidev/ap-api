@@ -215,13 +215,13 @@ class EmployeeController extends Controller
         try {
             DB::beginTransaction();
 
-            $employee = Employee::with('user')->findOrFail($id);
+            Log::info('delete employee hitted');
+
+            $employee = Employee::findOrFail($id);
 
             $employee->update(['is_active' => 0]);
 
-            if ($employee->user) {
-                $employee->user->update(['is_active' => 0]);
-            }
+            
 
             DB::commit();
 
