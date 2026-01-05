@@ -339,49 +339,39 @@ public function update(Request $request)
   public function markDelivered(Request $request)
 {
     try {
-        // ✅ Validate input
+          Log::info('🚚 Mark delivery request before', $request->all());
         $data = $request->validate([
-            'employee_id'    => 'required|exists:employees,id',
-            'customer_ids'   => 'required|array|min:1',
-            'customer_ids.*' => 'exists:customers,id',
+            'employee_id'     => 'required|exists:employees,id',
+            'supply_ids'      => 'required|array|min:1',
         ]);
 
         Log::info('🚚 Mark delivery request', $data);
 
-        // ✅ Update supply_items directly
         $updated = SupplyItem::where('employee_id', $data['employee_id'])
-            ->whereIn('customer_id', $data['customer_ids'])
-            ->where('is_delivered', 0)
+            ->whereIn('id', $data['supply_ids'])
             ->update([
                 'is_delivered' => 1,
                 'updated_at'   => now(),
             ]);
 
-        Log::info('✅ Supply items delivered', [
-            'employee_id' => $data['employee_id'],
-            'customers'   => $data['customer_ids'],
-            'updated'     => $updated,
-        ]);
-
         return response()->json([
             'status' => true,
-            'message' => 'Supply items delivered successfully',
+            'message' => 'Supply marked as delivered',
             'updated_items' => $updated,
         ], 200);
 
     } catch (\Throwable $e) {
-
         Log::error('❌ Mark delivery failed', [
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
         ]);
 
         return response()->json([
             'status' => false,
-            'message' => 'Failed to mark supply items delivered',
+            'message' => 'Failed to mark supply delivered',
         ], 500);
     }
 }
+
 
 
 
@@ -523,7 +513,70 @@ public function assignSupplyDate(Request $request)
     }
 }
 
+public function getSupplyItemsByEmployee(Request $request, $employeeId)
+{
+    try {
+        $query = SupplyItem::with(['customer', 'supply'])
+            ->where('employee_id', $employeeId)
+            ->where('is_delivered', 0);
 
+        // 🔹 PREDEFINED FILTERS
+        if ($request->filled('filter')) {
+            $filter = $request->filter;
+
+            if ($filter === 'today') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereDate('supply_date', Carbon::today());
+                });
+            }
+
+            if ($filter === 'week') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereBetween(
+                        'supply_date',
+                        [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]
+                    );
+                });
+            }
+
+            if ($filter === 'month') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereMonth('supply_date', Carbon::now()->month)
+                      ->whereYear('supply_date', Carbon::now()->year);
+                });
+            }
+        }
+
+        // 🔹 CUSTOM DATE RANGE
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+
+            $query->whereHas('supply', function ($q) use ($from, $to) {
+                $q->whereBetween('supply_date', [$from, $to]);
+            });
+        }
+
+        $items = $query->latest()->get();
+
+        return response()->json([
+            'status' => true,
+            'count'  => $items->count(),
+            'data'   => $items,
+        ], 200);
+
+    } catch (\Throwable $e) {
+        Log::error('❌ Supply item filter failed', [
+            'employee_id' => $employeeId,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch supply items',
+        ], 500);
+    }
+}
 
 
 
