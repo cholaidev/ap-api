@@ -339,16 +339,16 @@ public function update(Request $request)
   public function markDelivered(Request $request)
 {
     try {
+          Log::info('🚚 Mark delivery request before', $request->all());
         $data = $request->validate([
             'employee_id'     => 'required|exists:employees,id',
             'supply_ids'      => 'required|array|min:1',
-            'supply_ids.*'    => 'exists:supplies,id',
         ]);
 
         Log::info('🚚 Mark delivery request', $data);
 
         $updated = SupplyItem::where('employee_id', $data['employee_id'])
-            ->whereIn('supply_id', $data['supply_ids'])
+            ->whereIn('id', $data['supply_ids'])
             ->update([
                 'is_delivered' => 1,
                 'updated_at'   => now(),

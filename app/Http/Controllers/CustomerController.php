@@ -158,8 +158,8 @@ class CustomerController extends Controller
     {
         try {
             $query = SupplyItem::with(['supply.employee'])
-                ->where('customer_id', $customerId)
-                ->where('is_delivered', 1);
+                ->where('customer_id', $customerId);
+               
 
             if ($request->filled('from_date') && $request->filled('to_date')) {
                 $from = Carbon::parse($request->from_date)->startOfDay();
