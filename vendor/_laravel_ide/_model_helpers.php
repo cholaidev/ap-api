@@ -7,6 +7,7 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property string|null $cancelled_at
      * @property mixed $is_active
      * @property mixed $quantity
      * @property string|null $milk
@@ -23,6 +24,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereMilk($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereQuantity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereIsActive($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCancelledAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer newModelQuery()

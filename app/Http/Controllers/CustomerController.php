@@ -12,24 +12,35 @@ use Illuminate\Validation\ValidationException;
 class CustomerController extends Controller
 {
     // 🔥 GET ALL CUSTOMERS
-    public function index()
-    {
-        try {
-            return response()->json([
-                'status' => true,
-                'message' => 'Customers loaded successfully',
-                'data' => Customer::orderBy('id', 'DESC')->get(),
-            ], 200);
+   public function index(Request $request)
+{
+    try {
+        $status = $request->query('status', 'all'); // default = all
 
-        } catch (\Throwable $e) {
-            Log::error('Customer index error', ['error' => $e->getMessage()]);
+        $query = Customer::orderBy('id', 'DESC');
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to fetch customers',
-            ], 500);
+        if ($status === 'active') {
+            $query->where('is_active', 1);
+        } elseif ($status === 'cancelled') {
+            $query->where('is_active', 0);
         }
+        // else 'all' → no filter
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Customers loaded successfully',
+            'data' => $query->get(),
+        ], 200);
+
+    } catch (\Throwable $e) {
+        Log::error('Customer index error', ['error' => $e->getMessage()]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch customers',
+        ], 500);
     }
+}
 
     // 🔥 CREATE CUSTOMER
     public function store(Request $request)
@@ -40,10 +51,10 @@ class CustomerController extends Controller
                 'phone'      => 'required|string|unique:customers,phone',
                 'house_name' => 'nullable|string|max:255',
                 'location'   => 'nullable|string|max:255',
-                'milk'       => 'nullable|string|max:50',
-                'quantity'   => 'nullable|integer|min:1',
+                'milk'       => 'nullable|string|max:5000',
+                'quantity'   => 'nullable|numeric|min:0.1',
             ]);
-
+             Log::info('Customer validated payload', $validated);
             $customer = Customer::create($validated);
 
             return response()->json([
@@ -100,8 +111,8 @@ class CustomerController extends Controller
                 'phone'      => 'required|string|unique:customers,phone,' . $id,
                 'house_name' => 'nullable|string|max:255',
                 'location'   => 'nullable|string|max:255',
-                'milk'       => 'nullable|string|max:50',
-                'quantity'   => 'nullable|integer|min:1',
+                'milk'       => 'nullable|string|max:5000',
+                'quantity'   => 'nullable|numeric|min:0.1',
             ]);
 
             $customer->update($validated);
@@ -132,26 +143,33 @@ class CustomerController extends Controller
 
     // 🔥 DELETE (SOFT)
     public function destroy($id)
-    {
-        try {
-            $customer = Customer::findOrFail($id);
+{
+    try {
+        $customer = Customer::findOrFail($id);
 
-            $customer->update(['is_active' => 0]);
+        $customer->update([
+            'is_active'    => 0,
+            'cancelled_at' => now(),
+        ]);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Customer deactivated successfully',
-            ], 200);
+        return response()->json([
+            'status'  => true,
+            'message' => 'Customer cancelled successfully',
+        ], 200);
 
-        } catch (\Throwable $e) {
-            Log::error('Customer delete error', ['error' => $e->getMessage()]);
+    } catch (\Throwable $e) {
+        Log::error('Customer cancel error', [
+            'customer_id' => $id,
+            'error' => $e->getMessage()
+        ]);
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to delete customer',
-            ], 500);
-        }
+        return response()->json([
+            'status'  => false,
+            'message' => 'Failed to cancel customer',
+        ], 500);
     }
+}
+
 
     // 🔥 DELIVERY HISTORY
     public function deliveryHistory(Request $request, $customerId)
