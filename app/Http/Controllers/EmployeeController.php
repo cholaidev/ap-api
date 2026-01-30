@@ -12,23 +12,35 @@ use Illuminate\Validation\ValidationException;
 class EmployeeController extends Controller
 {
     // 🔥 GET ALL EMPLOYEES
-    public function index()
-    {
-        try {
-            return response()->json([
-                'status'  => true,
-                'message' => 'Employees loaded successfully',
-                'data'    => Employee::latest()->get(),
-            ], 200);
-        } catch (\Throwable $e) {
-            Log::error('Employee index error', ['error' => $e->getMessage()]);
+   public function index(Request $request)
+{
+    try {
+        $status = $request->query('status', 'all'); // default = all
 
-            return response()->json([
-                'status'  => false,
-                'message' => 'Unable to fetch employees',
-            ], 500);
+        $query = Employee::latest();
+
+        if ($status === 'active') {
+            $query->where('is_active', 1);
+        } elseif ($status === 'cancelled') {
+            $query->where('is_active', 0);
         }
+        // else 'all' → no filter
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Employees loaded successfully',
+            'data'    => $query->get(),
+        ], 200);
+
+    } catch (\Throwable $e) {
+        Log::error('Employee index error', ['error' => $e->getMessage()]);
+
+        return response()->json([
+            'status'  => false,
+            'message' => 'Unable to fetch employees',
+        ], 500);
     }
+}
 
     // 🔥 GET SINGLE EMPLOYEE
     public function show($id)
