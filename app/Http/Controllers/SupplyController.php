@@ -29,24 +29,25 @@ public function index(Request $request)
 
         /**
          * 🔹 FILTER BY ASSIGNED / TEMPLATE
-         * is_assigned_only = 1 → TEMPLATE supplies
-         * is_assigned_only = 0 → GENERATED supplies
+         * is_assigned_only = 1 → TEMPLATE supplies (NO date filter)
+         * is_assigned_only = 0 → GENERATED supplies (WITH date filter)
          */
         if ($request->has('is_assigned_only')) {
             $query->where(
                 'is_assigned_only',
                 (int) $request->is_assigned_only
             );
-
-            Log::info('🔐 is_assigned_only filter applied', [
-                'value' => (int) $request->is_assigned_only,
-            ]);
         }
 
         /**
          * 🔹 DATE RANGE FILTER
+         * Apply ONLY when is_assigned_only != 1
          */
-        if ($request->filled('from_date') && $request->filled('to_date')) {
+        if (
+            (int) $request->is_assigned_only !== 1 &&
+            $request->filled('from_date') &&
+            $request->filled('to_date')
+        ) {
             $from = Carbon::parse($request->from_date)->startOfDay();
             $to   = Carbon::parse($request->to_date)->endOfDay();
 
@@ -72,6 +73,7 @@ public function index(Request $request)
         ], 500);
     }
 }
+
 
 
 

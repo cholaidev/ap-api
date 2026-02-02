@@ -9,7 +9,7 @@ namespace App\Models {
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property string|null $cancelled_at
      * @property mixed $is_active
-     * @property mixed $quantity
+     * @property float|null $quantity
      * @property string|null $milk
      * @property string|null $location
      * @property string|null $house_name
