@@ -12,18 +12,21 @@ return new class extends Migration
  public function up(): void
 {
     Schema::create('customers', function (Blueprint $table) {
-        $table->id();
+    $table->id();
 
-        $table->string('name')->nullable();  
-        $table->string('phone')->unique();        
-        $table->string('house_name')->nullable();    
-        $table->string('location')->nullable();       
-        $table->string('milk')->nullable();          
-        $table->decimal('quantity', 10, 2)->nullable();
-        $table->integer('is_active')->default(1);   
-        $table->timestamp('cancelled_at')->nullable();
-        $table->timestamps();
-    });
+    $table->string('name')->nullable();
+    $table->string('phone')->unique();
+    $table->string('house_name')->nullable();
+    $table->string('location')->nullable();
+
+    // 🐄 Milk quantities
+    $table->decimal('cow_milk_quantity', 10, 2)->nullable();
+    $table->decimal('buffalo_milk_quantity', 10, 2)->nullable();
+
+    $table->integer('is_active')->default(1);
+    $table->timestamp('cancelled_at')->nullable();
+    $table->timestamps();
+});
 }
 
 

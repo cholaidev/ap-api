@@ -9,8 +9,8 @@ namespace App\Models {
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property string|null $cancelled_at
      * @property mixed $is_active
-     * @property float|null $quantity
-     * @property string|null $milk
+     * @property float|null $buffalo_milk_quantity
+     * @property float|null $cow_milk_quantity
      * @property string|null $location
      * @property string|null $house_name
      * @property string $phone
@@ -21,8 +21,8 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer wherePhone($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereHouseName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereLocation($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereMilk($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCowMilkQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereBuffaloMilkQuantity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereIsActive($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCancelledAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereCreatedAt($value)
@@ -2202,6 +2202,8 @@ namespace App\Models {
      * @property boolean $is_supplied
      * @property float $total_amount
      * @property float $total_quantity
+     * @property float $total_buffalo_milk_quantity
+     * @property float $total_cow_milk_quantity
      * @property mixed $employee_id
      * @property int $id
      * @property-read \App\Models\Employee $employee
@@ -2209,6 +2211,8 @@ namespace App\Models {
      * @property-read int|null $items_count
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereEmployeeId($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereTotalCowMilkQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereTotalBuffaloMilkQuantity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereTotalQuantity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereTotalAmount($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Supply>|Supply whereIsSupplied($value)
@@ -2513,11 +2517,15 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
-     * @property mixed $is_delivered
-     * @property float|null $amount
-     * @property float|null $price_per_liter
-     * @property float|null $quantity
-     * @property string|null $milk
+     * @property bool $is_delivered
+     * @property float $total_amount
+     * @property float $total_quantity
+     * @property float $buffalo_amount
+     * @property float|null $buffalo_price_per_liter
+     * @property float|null $buffalo_milk_quantity
+     * @property float $cow_amount
+     * @property float|null $cow_price_per_liter
+     * @property float|null $cow_milk_quantity
      * @property mixed $customer_id
      * @property mixed $employee_id
      * @property mixed $supply_id
@@ -2528,10 +2536,14 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereSupplyId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereEmployeeId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereCustomerId($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereMilk($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereQuantity($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem wherePricePerLiter($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereAmount($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereCowMilkQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereCowPricePerLiter($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereCowAmount($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereBuffaloMilkQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereBuffaloPricePerLiter($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereBuffaloAmount($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereTotalQuantity($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereTotalAmount($value)
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereIsDelivered($value)
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<SupplyItem>|SupplyItem whereUpdatedAt($value)

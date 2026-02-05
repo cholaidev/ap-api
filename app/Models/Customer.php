@@ -14,9 +14,14 @@ class Customer extends Model
         'phone',
         'house_name',
         'location',
-        'milk',
-        'quantity',
-        'is_active'
+
+        // 🐄🐃 Milk quantities
+        'cow_milk_quantity',
+        'buffalo_milk_quantity',
+
+        // status
+        'is_active',
+        'cancelled_at',
     ];
 }
 
