@@ -48,92 +48,113 @@ class SupplyController extends Controller
 
     // 🔥 CREATE SUPPLY
     public function store(Request $request)
-    {
-        try {
-            if ($request->has('employee.id')) {
-                $request->merge(['employee_id' => $request->input('employee.id')]);
-            }
+{
+    try {
+        // 🔥 Normalize employee_id
+        if ($request->has('employee.id')) {
+            $request->merge([
+                'employee_id' => $request->input('employee.id'),
+            ]);
+        }
 
-            $data = $request->validate([
-                'employee_id' => 'required|exists:employees,id',
-                'supply_date' => 'nullable|date',
-                'is_assigned_only' => 'nullable|boolean',
-                'items' => 'required|array|min:1',
+        $data = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'supply_date' => 'nullable',
+            'is_assigned_only' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
 
-                'items.*.customer_id' => 'required|exists:customers,id',
-                'items.*.cow_milk_quantity' => 'nullable|numeric|min:0',
-                'items.*.cow_price_per_liter' => 'nullable|numeric|min:0',
-                'items.*.buffalo_milk_quantity' => 'nullable|numeric|min:0',
-                'items.*.buffalo_price_per_liter' => 'nullable|numeric|min:0',
+            'items.*.customer_id' => 'required|exists:customers,id',
+            'items.*.cow_milk_quantity' => 'nullable|numeric|min:0',
+            'items.*.cow_price_per_liter' => 'nullable|numeric|min:0',
+            'items.*.buffalo_milk_quantity' => 'nullable|numeric|min:0',
+            'items.*.buffalo_price_per_liter' => 'nullable|numeric|min:0',
+        ]);
+
+        Log::info('Store supply payload', $data);
+
+        return DB::transaction(function () use ($data) {
+
+            $totalCow = 0;
+            $totalBuffalo = 0;
+            $totalQty = 0;
+            $totalAmount = 0;
+
+            $supply = Supply::create([
+                'employee_id' => $data['employee_id'],
+                'supply_date' => isset($data['supply_date'])
+                    ? Carbon::parse($data['supply_date'])
+                    : now(),
+                'is_assigned_only' => $data['is_assigned_only'] ?? 0,
             ]);
 
-            return DB::transaction(function () use ($data) {
+            foreach ($data['items'] as $item) {
 
-                $totalCow = $totalBuffalo = $totalQty = $totalAmount = 0;
+                $cowQty  = (float) ($item['cow_milk_quantity'] ?? 0);
+                $cowRate = (float) ($item['cow_price_per_liter'] ?? 0);
+                $cowAmt  = $cowQty * $cowRate;
 
-                $supply = Supply::create([
+                $bufQty  = (float) ($item['buffalo_milk_quantity'] ?? 0);
+                $bufRate = (float) ($item['buffalo_price_per_liter'] ?? 0);
+                $bufAmt  = $bufQty * $bufRate;
+
+                SupplyItem::create([
+                    'supply_id' => $supply->id,
                     'employee_id' => $data['employee_id'],
-                    'supply_date' => $data['supply_date'] ?? now(),
-                    'is_assigned_only' => $data['is_assigned_only'] ?? 0,
+                    'customer_id' => $item['customer_id'],
+
+                    'cow_milk_quantity' => $cowQty,
+                    'cow_price_per_liter' => $cowRate,
+                    'cow_amount' => $cowAmt,
+
+                    'buffalo_milk_quantity' => $bufQty,
+                    'buffalo_price_per_liter' => $bufRate,
+                    'buffalo_amount' => $bufAmt,
+
+                    'total_quantity' => $cowQty + $bufQty,
+                    'total_amount' => $cowAmt + $bufAmt,
                 ]);
 
-                foreach ($data['items'] as $item) {
+                $totalCow += $cowQty;
+                $totalBuffalo += $bufQty;
+                $totalQty += ($cowQty + $bufQty);
+                $totalAmount += ($cowAmt + $bufAmt);
+            }
 
-                    $cowQty  = $item['cow_milk_quantity'] ?? 0;
-                    $cowRate = $item['cow_price_per_liter'] ?? 0;
-                    $cowAmt  = $cowQty * $cowRate;
+            $supply->update([
+                'total_cow_milk_quantity' => $totalCow,
+                'total_buffalo_milk_quantity' => $totalBuffalo,
+                'total_quantity' => $totalQty,
+                'total_amount' => $totalAmount,
+            ]);
 
-                    $bufQty  = $item['buffalo_milk_quantity'] ?? 0;
-                    $bufRate = $item['buffalo_price_per_liter'] ?? 0;
-                    $bufAmt  = $bufQty * $bufRate;
+            return response()->json([
+                'status' => true,
+                'message' => 'Supply created successfully',
+                'data' => $supply->load('items.customer'),
+            ], 201);
+        });
 
-                    SupplyItem::create([
-                        'supply_id' => $supply->id,
-                        'employee_id' => $data['employee_id'],
-                        'customer_id' => $item['customer_id'],
-
-                        'cow_milk_quantity' => $cowQty,
-                        'cow_price_per_liter' => $cowRate,
-                        'cow_amount' => $cowAmt,
-
-                        'buffalo_milk_quantity' => $bufQty,
-                        'buffalo_price_per_liter' => $bufRate,
-                        'buffalo_amount' => $bufAmt,
-
-                        'total_quantity' => $cowQty + $bufQty,
-                        'total_amount' => $cowAmt + $bufAmt,
-                    ]);
-
-                    $totalCow += $cowQty;
-                    $totalBuffalo += $bufQty;
-                    $totalQty += ($cowQty + $bufQty);
-                    $totalAmount += ($cowAmt + $bufAmt);
-                }
-
-                $supply->update([
-                    'total_cow_milk_quantity' => $totalCow,
-                    'total_buffalo_milk_quantity' => $totalBuffalo,
-                    'total_quantity' => $totalQty,
-                    'total_amount' => $totalAmount,
-                ]);
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Supply created successfully',
-                    'data' => $supply->load('items.customer'),
-                ], 201);
-            });
-
-        } catch (\Throwable $e) {
-            Log::error('Supply store error', ['error' => $e->getMessage()]);
-            return response()->json(['status' => false], 500);
-        }
+    } catch (\Throwable $e) {
+        Log::error('Supply store error', ['error' => $e->getMessage()]);
+        return response()->json([
+            'status' => false,
+            'message' => 'Something went wrong',
+        ], 500);
     }
+}
+
 
     // 🔥 UPDATE SUPPLY
     public function update(Request $request)
     {
         try {
+               Log::info('update data'.json_encode( $request->all()));
+
+                if ($request->has('employee.id')) {
+            $request->merge([
+                'employee_id' => $request->input('employee.id'),
+            ]);
+        }
             $data = $request->validate([
                 'supply_id' => 'required|exists:supplies,id',
                 'employee_id' => 'required|exists:employees,id',
@@ -144,7 +165,7 @@ class SupplyController extends Controller
                 'items.*.buffalo_milk_quantity' => 'nullable|numeric|min:0',
                 'items.*.buffalo_price_per_liter' => 'nullable|numeric|min:0',
             ]);
-
+         
             return DB::transaction(function () use ($data) {
 
                 $supply = Supply::findOrFail($data['supply_id']);
@@ -204,6 +225,42 @@ class SupplyController extends Controller
         }
     }
 
+   public function show($id)
+{
+    try {
+        Log::info("Supply details requested", ['supply_id' => $id]);
+
+        $supply = Supply::with(['employee', 'items','items.customer'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supply details fetched successfully',
+            'data' => $supply,
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::warning("Supply not found", ['supply_id' => $id]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Supply not found',
+        ], 404);
+
+    } catch (\Exception $e) {
+        Log::error("Supply fetch failed", [
+            'supply_id' => $id,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch supply details',
+        ], 500);
+    }
+}
+
+
     // 🔥 MARK DELIVERED
     public function markDelivered(Request $request)
     {
@@ -219,3 +276,5 @@ class SupplyController extends Controller
         return response()->json(['status' => true]);
     }
 }
+
+
