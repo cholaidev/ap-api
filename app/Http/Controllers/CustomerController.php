@@ -206,7 +206,9 @@ class CustomerController extends Controller
     public function bulkImport(Request $request)
     {
         Log::info('Customer bulk import started');
-
+          Log::info('📥 Raw request payload', [
+        'payload' => $request->all(),
+    ]);
         try {
             $request->validate([
                 'customers' => 'required|array|min:1',
@@ -231,7 +233,7 @@ class CustomerController extends Controller
                 Customer::create([
                     'name'       => $row['name'] ?? null,
                     'phone'      => $row['phone'],
-                    'house_name' => $row['house'] ?? null,
+                    'house_name' => $row['house_name'] ?? null,
                     'location'   => $row['location'] ?? null,
 
                     // 🐄 Milk quantities

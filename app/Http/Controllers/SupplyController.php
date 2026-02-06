@@ -263,18 +263,318 @@ class SupplyController extends Controller
 
     // 🔥 MARK DELIVERED
     public function markDelivered(Request $request)
-    {
+{
+    Log::info('Mark delivered request received', [
+        'payload' => $request->all(),
+    ]);
+
+    try {
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'supply_item_ids' => 'required|array|min:1',
+            'supply_ids' => 'required|array|min:1',
         ]);
 
-        SupplyItem::where('employee_id', $data['employee_id'])
-            ->whereIn('id', $data['supply_item_ids'])
+        Log::info('Validated mark delivered data', $data);
+
+        $updated = SupplyItem::where('employee_id', $data['employee_id'])
+            ->whereIn('id', $data['supply_ids'])
             ->update(['is_delivered' => 1]);
 
-        return response()->json(['status' => true]);
+        Log::info('Supply items marked as delivered', [
+            'employee_id' => $data['employee_id'],
+            'item_ids'    => $data['supply_ids'],
+            'updated_rows'=> $updated,
+        ]);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Items marked as delivered',
+            'updated' => $updated,
+        ], 200);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+
+        Log::warning('Mark delivered validation failed', [
+            'errors' => $e->errors(),
+        ]);
+
+        return response()->json([
+            'status'  => false,
+            'message' => 'Validation failed',
+            'errors'  => $e->errors(),
+        ], 422);
+
+    } catch (\Throwable $e) {
+
+        Log::error('Mark delivered error', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'status'  => false,
+            'message' => 'Failed to mark items as delivered',
+        ], 500);
     }
+}
+
+
+
+   public function assignSupplyDate(Request $request)
+{
+    try {
+        $data = $request->validate([
+            'supply_date' => 'required|date',
+        ]);
+
+        $date = Carbon::parse($data['supply_date'])->startOfDay();
+
+        Log::info('📅 Supply generation started', [
+            'date' => $date->toDateString(),
+        ]);
+
+        return DB::transaction(function () use ($date) {
+
+            // 🔹 GET ALL TEMPLATE SUPPLIES
+            $initialSupplies = Supply::where('is_assigned_only', 1)
+                ->with('items')
+                ->get();
+
+            if ($initialSupplies->isEmpty()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'No initial supplies found',
+                ], 422);
+            }
+
+            Log::info('♻️ Initial supplies found', [
+                'count' => $initialSupplies->count(),
+            ]);
+
+            foreach ($initialSupplies as $templateSupply) {
+
+                // 🔎 CHECK EXISTING SUPPLY FOR DATE
+                $existingSupply = Supply::where('employee_id', $templateSupply->employee_id)
+                    ->whereDate('supply_date', $date)
+                    ->where('is_assigned_only', 0)
+                    ->first();
+
+                $totalCow = 0;
+                $totalBuffalo = 0;
+                $totalQty = 0;
+                $totalAmount = 0;
+
+                if ($existingSupply) {
+
+                    Log::info('♻️ Updating existing supply', [
+                        'supply_id'   => $existingSupply->id,
+                        'employee_id' => $templateSupply->employee_id,
+                        'date'        => $date->toDateString(),
+                    ]);
+
+                    // 🧹 REMOVE OLD ITEMS
+                    $existingSupply->items()->delete();
+
+                    foreach ($templateSupply->items as $item) {
+
+                        $cowQty = (float) $item->cow_milk_quantity;
+                        $cowRate = (float) $item->cow_price_per_liter;
+                        $cowAmt = $cowQty * $cowRate;
+
+                        $bufQty = (float) $item->buffalo_milk_quantity;
+                        $bufRate = (float) $item->buffalo_price_per_liter;
+                        $bufAmt = $bufQty * $bufRate;
+
+                        SupplyItem::create([
+                            'supply_id' => $existingSupply->id,
+                            'employee_id' => $item->employee_id,
+                            'customer_id' => $item->customer_id,
+
+                            'cow_milk_quantity' => $cowQty,
+                            'cow_price_per_liter' => $cowRate,
+                            'cow_amount' => $cowAmt,
+
+                            'buffalo_milk_quantity' => $bufQty,
+                            'buffalo_price_per_liter' => $bufRate,
+                            'buffalo_amount' => $bufAmt,
+
+                            'total_quantity' => $cowQty + $bufQty,
+                            'total_amount' => $cowAmt + $bufAmt,
+
+                            'is_delivered' => 0,
+                        ]);
+
+                        $totalCow += $cowQty;
+                        $totalBuffalo += $bufQty;
+                        $totalQty += ($cowQty + $bufQty);
+                        $totalAmount += ($cowAmt + $bufAmt);
+                    }
+
+                    $existingSupply->update([
+                        'total_cow_milk_quantity' => $totalCow,
+                        'total_buffalo_milk_quantity' => $totalBuffalo,
+                        'total_quantity' => $totalQty,
+                        'total_amount' => $totalAmount,
+                    ]);
+
+                } else {
+
+                    // 🆕 CREATE NEW SUPPLY
+                    $newSupply = Supply::create([
+                        'employee_id' => $templateSupply->employee_id,
+                        'supply_date' => $date,
+                        'is_assigned_only' => 0,
+                    ]);
+
+                    foreach ($templateSupply->items as $item) {
+
+                        $cowQty = (float) $item->cow_milk_quantity;
+                        $cowRate = (float) $item->cow_price_per_liter;
+                        $cowAmt = $cowQty * $cowRate;
+
+                        $bufQty = (float) $item->buffalo_milk_quantity;
+                        $bufRate = (float) $item->buffalo_price_per_liter;
+                        $bufAmt = $bufQty * $bufRate;
+
+                        SupplyItem::create([
+                            'supply_id' => $newSupply->id,
+                            'employee_id' => $item->employee_id,
+                            'customer_id' => $item->customer_id,
+
+                            'cow_milk_quantity' => $cowQty,
+                            'cow_price_per_liter' => $cowRate,
+                            'cow_amount' => $cowAmt,
+
+                            'buffalo_milk_quantity' => $bufQty,
+                            'buffalo_price_per_liter' => $bufRate,
+                            'buffalo_amount' => $bufAmt,
+
+                            'total_quantity' => $cowQty + $bufQty,
+                            'total_amount' => $cowAmt + $bufAmt,
+
+                            'is_delivered' => 0,
+                        ]);
+
+                        $totalCow += $cowQty;
+                        $totalBuffalo += $bufQty;
+                        $totalQty += ($cowQty + $bufQty);
+                        $totalAmount += ($cowAmt + $bufAmt);
+                    }
+
+                    $newSupply->update([
+                        'total_cow_milk_quantity' => $totalCow,
+                        'total_buffalo_milk_quantity' => $totalBuffalo,
+                        'total_quantity' => $totalQty,
+                        'total_amount' => $totalAmount,
+                    ]);
+
+                    Log::info('✅ Supply cloned', [
+                        'template_supply_id' => $templateSupply->id,
+                        'new_supply_id' => $newSupply->id,
+                    ]);
+                }
+            }
+
+            // 🔒 LOCK SETTINGS
+            DB::table('settings')->update([
+                'today_supply_generated' => true,
+                'supply_date' => $date,
+                'updated_at' => now(),
+            ]);
+
+            Log::info('🔒 Supply generation completed', [
+                'date' => $date->toDateString(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Supply generated successfully',
+                'date' => $date->toDateString(),
+                'supplies_created' => $initialSupplies->count(),
+            ], 200);
+        });
+
+    } catch (\Throwable $e) {
+
+        Log::critical('🔥 Supply generation failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to generate supply',
+        ], 500);
+    }
+}
+
+
+
+public function getSupplyItemsByEmployee(Request $request, $employeeId)
+{
+    try {
+        $query = SupplyItem::with(['customer', 'supply'])
+            ->where('employee_id', $employeeId)
+            ->where('is_delivered', 0);
+
+        // 🔹 PREDEFINED FILTERS
+        if ($request->filled('filter')) {
+            $filter = $request->filter;
+
+            if ($filter === 'today') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereDate('supply_date', Carbon::today());
+                });
+            }
+
+            if ($filter === 'week') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereBetween(
+                        'supply_date',
+                        [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]
+                    );
+                });
+            }
+
+            if ($filter === 'month') {
+                $query->whereHas('supply', function ($q) {
+                    $q->whereMonth('supply_date', Carbon::now()->month)
+                      ->whereYear('supply_date', Carbon::now()->year);
+                });
+            }
+        }
+
+        // 🔹 CUSTOM DATE RANGE
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+
+            $query->whereHas('supply', function ($q) use ($from, $to) {
+                $q->whereBetween('supply_date', [$from, $to]);
+            });
+        }
+
+        $items = $query->latest()->get();
+
+        return response()->json([
+            'status' => true,
+            'count'  => $items->count(),
+            'data'   => $items,
+        ], 200);
+
+    } catch (\Throwable $e) {
+        Log::error('❌ Supply item filter failed', [
+            'employee_id' => $employeeId,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch supply items',
+        ], 500);
+    }
+}
+
 }
 
 
