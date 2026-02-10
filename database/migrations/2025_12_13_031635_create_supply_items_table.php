@@ -7,22 +7,32 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('supply_items', function (Blueprint $table) {
-            $table->id();
+       Schema::create('supply_items', function (Blueprint $table) {
+    $table->id();
 
-            $table->unsignedBigInteger('supply_id');    
-            $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('customer_id');
-               
+    $table->unsignedBigInteger('supply_id');
+    $table->unsignedBigInteger('employee_id');
+    $table->unsignedBigInteger('customer_id');
 
-            $table->string('milk')->nullable();
-            $table->decimal('quantity', 10, 2)->nullable();
-            $table->decimal('price_per_liter', 10, 2)->nullable();
-            $table->decimal('amount', 10, 2)->default(0)->nullable();
-            $table->integer('is_delivered')->default(0)->nullable();
+    // 🐄 Cow milk
+    $table->decimal('cow_milk_quantity', 10, 2)->nullable();
+    $table->decimal('cow_price_per_liter', 10, 2)->nullable();
+    $table->decimal('cow_amount', 10, 2)->default(0);
 
-            $table->timestamps();
-        });
+    // 🐃 Buffalo milk
+    $table->decimal('buffalo_milk_quantity', 10, 2)->nullable();
+    $table->decimal('buffalo_price_per_liter', 10, 2)->nullable();
+    $table->decimal('buffalo_amount', 10, 2)->default(0);
+
+    // Totals
+    $table->decimal('total_quantity', 10, 2)->default(0);
+    $table->decimal('total_amount', 10, 2)->default(0);
+
+    $table->boolean('is_delivered')->default(0);
+
+    $table->timestamps();
+});
+
     }
 
     public function down(): void

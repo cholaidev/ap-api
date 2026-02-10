@@ -8,6 +8,8 @@ class Supply extends Model
 {
     protected $fillable = [
         'employee_id',
+        'total_cow_milk_quantity' ,
+        'total_buffalo_milk_quantity',
         'total_quantity',
         'total_amount',
         'is_supplied',
