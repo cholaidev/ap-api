@@ -225,6 +225,7 @@ class SupplyController extends Controller
             $data = $request->validate([
                 'supply_id' => 'required|exists:supplies,id',
                 'employee_id' => 'required|exists:employees,id',
+                'supply_date' => 'nullable',
                 'items' => 'required|array|min:1',
                 'items.*.customer_id' => 'required|exists:customers,id',
                 'items.*.cow_milk_quantity' => 'nullable|numeric|min:0',
@@ -278,6 +279,9 @@ class SupplyController extends Controller
                     'total_buffalo_milk_quantity' => $totalBuffalo,
                     'total_quantity' => $totalQty,
                     'total_amount' => $totalAmount,
+                     'supply_date' => isset($data['supply_date'])
+                            ? Carbon::parse($data['supply_date'])
+                            : now(),
                 ]);
 
                 return response()->json([
