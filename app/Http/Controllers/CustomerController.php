@@ -17,7 +17,7 @@ class CustomerController extends Controller
         try {
             $status = $request->query('status', 'all'); // active | cancelled | all
 
-            $query = Customer::orderBy('id', 'DESC');
+          $query = Customer::orderBy('house_name', 'ASC');
 
             if ($status === 'active') {
                 $query->where('is_active', 1);
@@ -148,6 +148,7 @@ class CustomerController extends Controller
 
             $customer->update([
                 'is_active'    => 0,
+                'phone'  =>null,
                 'cancelled_at' => now(),
             ]);
 

@@ -13,7 +13,7 @@ namespace App\Models {
      * @property float|null $cow_milk_quantity
      * @property string|null $location
      * @property string|null $house_name
-     * @property string $phone
+     * @property string|null $phone
      * @property string|null $name
      * @property int $id
      * @method static \Illuminate\Database\Eloquent\Builder<Customer>|Customer whereId($value)
@@ -650,7 +650,7 @@ namespace App\Models {
      * @property float|null $given_money
      * @property float|null $salary
      * @property string|null $email
-     * @property string $phone
+     * @property string|null $phone
      * @property string|null $name
      * @property int $id
      * @property-read \App\Models\User $user

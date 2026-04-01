@@ -231,7 +231,17 @@ class EmployeeController extends Controller
 
             $employee = Employee::findOrFail($id);
 
-            $employee->update(['is_active' => 0]);
+             $employee->update([
+            'is_active' => 0,
+            'phone'     => null, // ✅ free the phone
+        ]);
+
+        // ✅ also deactivate linked user (IMPORTANT)
+        if ($employee->user) {
+            $employee->user->update([
+                'phone'     => null, // optional but recommended
+            ]);
+        }
 
             
 
