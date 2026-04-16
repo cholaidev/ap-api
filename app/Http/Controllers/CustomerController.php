@@ -148,8 +148,35 @@ class CustomerController extends Controller
 
             $customer->update([
                 'is_active'    => 0,
-                'phone'  =>null,
                 'cancelled_at' => now(),
+            ]);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Customer cancelled successfully',
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Customer cancel error', [
+                'customer_id' => $id,
+                'error'       => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to cancel customer',
+            ], 500);
+        }
+    }
+
+     public function reActive($id)
+    {
+        try {
+            $customer = Customer::findOrFail($id);
+
+            $customer->update([
+                'is_active'    => 1,
+                // 'cancelled_at' => now(),
             ]);
 
             return response()->json([

@@ -233,13 +233,53 @@ class EmployeeController extends Controller
 
              $employee->update([
             'is_active' => 0,
-            'phone'     => null, // ✅ free the phone
+            // 'phone'     => null, // ✅ free the phone
         ]);
+
+      
+        if ($employee->user) {
+            $employee->user->update([
+                'is_active' => 0, // optional but recommended
+            ]);
+        }
+
+            
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Employee deactivated successfully',
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Employee delete error', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Employee delete failed',
+            ], 500);
+        }
+    }
+
+public function reActive($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            Log::info('delete employee hitted');
+
+            $employee = Employee::findOrFail($id);
+
+             $employee->update([
+            'is_active' => 1,
+             ]);
 
         // ✅ also deactivate linked user (IMPORTANT)
         if ($employee->user) {
             $employee->user->update([
-                'phone'     => null, // optional but recommended
+               'is_active' => 1, // optional but recommended
             ]);
         }
 
@@ -263,3 +303,4 @@ class EmployeeController extends Controller
         }
     }
 }
+

@@ -2847,7 +2847,7 @@ namespace App\Models {
      * @property mixed $employee_id
      * @property mixed $role
      * @property string $password
-     * @property string $phone
+     * @property string|null $phone
      * @property string|null $email
      * @property string $name
      * @property int $id

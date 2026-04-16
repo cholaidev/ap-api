@@ -24,6 +24,7 @@ Route::put('/customers/{id}', [CustomerController::class, 'update'])->middleware
 Route::delete('/customers/{id}', [CustomerController::class, 'destroy'])->middleware('auth:sanctum');
 Route::get('/customer-history/{customer}', [CustomerController::class, 'deliveryHistory']);
 Route::post('/customers/bulk-import', [CustomerController::class, 'bulkImport']);
+  Route::put('/customers/re-active/{id}', [CustomerController::class, 'reActive']);
 
 
 
@@ -34,6 +35,7 @@ Route::prefix('employees')->group(function () {
     Route::post('/', [EmployeeController::class, 'store']);
     Route::put('/{id}', [EmployeeController::class, 'update']);
     Route::delete('/{id}', [EmployeeController::class, 'destroy']);
+    Route::put('re-active/{id}', [EmployeeController::class, 'reActive']);
 });
 
 Route::prefix('supplies')->group(function () {
