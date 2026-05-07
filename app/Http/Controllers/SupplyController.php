@@ -591,70 +591,200 @@ class SupplyController extends Controller
         ], 500);
     }
 }
-    public function getSupplyItemsByEmployee(Request $request, $employeeId)
-    {
-        try {
-            $query = SupplyItem::with(['customer', 'supply'])
-                ->where('employee_id', $employeeId)
-                ->where('is_delivered', 0);
+   public function getSupplyItemsByEmployee(Request $request, $employeeId)
+{
+    try {
 
-            // 🔹 PREDEFINED FILTERS
-            if ($request->filled('filter')) {
-                $filter = $request->filter;
+        // 🔹 BASE QUERY
+        $baseQuery = SupplyItem::with(['customer', 'supply'])
+            ->where('employee_id', $employeeId)
+            ->whereHas('supply', function ($q) {
+                $q->where('is_assigned_only', 0);
+            });
 
-                if ($filter === 'today') {
-                    $query->whereHas('supply', function ($q) {
-                        $q->whereDate('supply_date', Carbon::today());
-                    });
-                }
+        // 🔹 PREDEFINED FILTERS
+        if ($request->filled('filter')) {
 
-                if ($filter === 'week') {
-                    $query->whereHas('supply', function ($q) {
-                        $q->whereBetween(
-                            'supply_date',
-                            [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]
-                        );
-                    });
-                }
+            $filter = $request->filter;
 
-                if ($filter === 'month') {
-                    $query->whereHas('supply', function ($q) {
-                        $q->whereMonth('supply_date', Carbon::now()->month)
-                            ->whereYear('supply_date', Carbon::now()->year);
-                    });
-                }
-            }
-
-            // 🔹 CUSTOM DATE RANGE
-            if ($request->filled('from_date') && $request->filled('to_date')) {
-                $from = Carbon::parse($request->from_date)->startOfDay();
-                $to = Carbon::parse($request->to_date)->endOfDay();
-
-                $query->whereHas('supply', function ($q) use ($from, $to) {
-                    $q->whereBetween('supply_date', [$from, $to]);
+            if ($filter === 'today') {
+                $baseQuery->whereHas('supply', function ($q) {
+                    $q->whereDate('supply_date', Carbon::today());
                 });
             }
 
-            $items = $query->latest()->get();
+            if ($filter === 'week') {
+                $baseQuery->whereHas('supply', function ($q) {
+                    $q->whereBetween(
+                        'supply_date',
+                        [
+                            Carbon::now()->startOfWeek(),
+                            Carbon::now()->endOfWeek()
+                        ]
+                    );
+                });
+            }
 
-            return response()->json([
-                'status' => true,
-                'count' => $items->count(),
-                'data' => $items,
-            ], 200);
-
-        } catch (\Throwable $e) {
-            Log::error('❌ Supply item filter failed', [
-                'employee_id' => $employeeId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to fetch supply items',
-            ], 500);
+            if ($filter === 'month') {
+                $baseQuery->whereHas('supply', function ($q) {
+                    $q->whereMonth('supply_date', Carbon::now()->month)
+                        ->whereYear('supply_date', Carbon::now()->year);
+                });
+            }
         }
+
+        // 🔹 CUSTOM DATE RANGE
+        if (
+            $request->filled('from_date') &&
+            $request->filled('to_date')
+        ) {
+
+            $from = Carbon::parse(
+                $request->from_date
+            )->startOfDay();
+
+            $to = Carbon::parse(
+                $request->to_date
+            )->endOfDay();
+
+            $baseQuery->whereHas('supply', function ($q) use ($from, $to) {
+                $q->whereBetween('supply_date', [$from, $to]);
+            });
+        }
+
+        // 🔹 ALL ITEMS
+        $allItems = (clone $baseQuery)->get();
+
+        // 🔹 UNDELIVERED ITEMS
+        $undeliveredItems = (clone $baseQuery)
+            ->where('is_delivered', 0)
+            ->latest()
+            ->get();
+
+        // 🔹 DELIVERED ITEMS
+        $deliveredItems = (clone $baseQuery)
+            ->where('is_delivered', 1)
+            ->latest()
+            ->get();
+
+        // =========================
+        // 🔹 TOTAL METRICS
+        // =========================
+
+        $totalCustomers = $allItems
+            ->pluck('customer_id')
+            ->unique()
+            ->count();
+
+        $totalCowMilk = (float) $allItems
+            ->sum('cow_milk_quantity');
+
+        $totalBuffaloMilk = (float) $allItems
+            ->sum('buffalo_milk_quantity');
+
+        $totalQuantity = (float) $allItems
+            ->sum('total_quantity');
+
+        // =========================
+        // 🔹 UNDELIVERED METRICS
+        // =========================
+
+        $undeliveredCustomers = $undeliveredItems
+            ->pluck('customer_id')
+            ->unique()
+            ->count();
+
+        $undeliveredCowMilk = (float) $undeliveredItems
+            ->sum('cow_milk_quantity');
+
+        $undeliveredBuffaloMilk = (float) $undeliveredItems
+            ->sum('buffalo_milk_quantity');
+
+        $undeliveredQuantity = (float) $undeliveredItems
+            ->sum('total_quantity');
+
+        // =========================
+        // 🔹 DELIVERED METRICS
+        // =========================
+
+        $deliveredCustomers = $deliveredItems
+            ->pluck('customer_id')
+            ->unique()
+            ->count();
+
+        $deliveredCowMilk = (float) $deliveredItems
+            ->sum('cow_milk_quantity');
+
+        $deliveredBuffaloMilk = (float) $deliveredItems
+            ->sum('buffalo_milk_quantity');
+
+        $deliveredQuantity = (float) $deliveredItems
+            ->sum('total_quantity');
+
+        return response()->json([
+
+            'status' => true,
+            'data' => $undeliveredItems,
+            // 🔹 TOTAL METRICS
+            'totals' => [
+
+                'customers' => $totalCustomers,
+
+                'cow_milk' => $totalCowMilk,
+
+                'buffalo_milk' => $totalBuffaloMilk,
+
+                'total_quantity' => $totalQuantity,
+            ],
+
+            // 🔹 UNDELIVERED
+            'undelivered' => [
+
+                'count' => $undeliveredItems->count(),
+
+                'customers' => $undeliveredCustomers,
+
+                'cow_milk' => $undeliveredCowMilk,
+
+                'buffalo_milk' => $undeliveredBuffaloMilk,
+
+                'total_quantity' => $undeliveredQuantity,
+
+                'items' => $undeliveredItems,
+            ],
+
+            // 🔹 DELIVERED
+            'delivered' => [
+
+                'count' => $deliveredItems->count(),
+
+                'customers' => $deliveredCustomers,
+
+                'cow_milk' => $deliveredCowMilk,
+
+                'buffalo_milk' => $deliveredBuffaloMilk,
+
+                'total_quantity' => $deliveredQuantity,
+
+                'items' => $deliveredItems,
+            ],
+
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        Log::error('❌ Supply item filter failed', [
+            'employee_id' => $employeeId,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch supply items',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     public function destroy($id)
     {
