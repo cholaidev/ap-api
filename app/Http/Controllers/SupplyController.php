@@ -389,20 +389,25 @@ class SupplyController extends Controller
         }
     }
 
-    public function assignSupplyDate(Request $request)
-    {
-        try {
-            $data = $request->validate([
-                'supply_date' => 'required|date',
-            ]);
+   public function assignSupplyDate(Request $request)
+{
+    try {
 
-            $date = Carbon::parse($data['supply_date'])->startOfDay();
+        $data = $request->validate([
+            'supply_dates' => 'required|array|min:1',
+            'supply_dates.*' => 'required|date',
+        ]);
 
-            Log::info('📅 Supply generation started', [
-                'date' => $date->toDateString(),
-            ]);
+        $dates = collect($data['supply_dates'])
+            ->map(fn($date) => Carbon::parse($date)->startOfDay());
 
-            return DB::transaction(function () use ($date) {
+        return DB::transaction(function () use ($dates) {
+
+            foreach ($dates as $date) {
+
+                Log::info('📅 Supply generation started', [
+                    'date' => $date->toDateString(),
+                ]);
 
                 // 🔹 GET ALL TEMPLATE SUPPLIES
                 $initialSupplies = Supply::where('is_assigned_only', 1)
@@ -422,8 +427,11 @@ class SupplyController extends Controller
 
                 foreach ($initialSupplies as $templateSupply) {
 
-                    // 🔎 CHECK EXISTING SUPPLY FOR DATE
-                    $existingSupply = Supply::where('employee_id', $templateSupply->employee_id)
+                    // 🔎 CHECK EXISTING SUPPLY
+                    $existingSupply = Supply::where(
+                        'employee_id',
+                        $templateSupply->employee_id
+                    )
                         ->whereDate('supply_date', $date)
                         ->where('is_assigned_only', 0)
                         ->first();
@@ -540,43 +548,49 @@ class SupplyController extends Controller
                         Log::info('✅ Supply cloned', [
                             'template_supply_id' => $templateSupply->id,
                             'new_supply_id' => $newSupply->id,
+                            'date' => $date->toDateString(),
                         ]);
                     }
                 }
+            }
 
-                // 🔒 LOCK SETTINGS
-                DB::table('settings')->update([
-                    'today_supply_generated' => true,
-                    'supply_date' => $date,
-                    'updated_at' => now(),
-                ]);
+            // 🔒 LOCK SETTINGS
+            DB::table('settings')->update([
+                'today_supply_generated' => true,
+                'supply_date' => $dates->last(),
+                'updated_at' => now(),
+            ]);
 
-                Log::info('🔒 Supply generation completed', [
-                    'date' => $date->toDateString(),
-                ]);
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Supply generated successfully',
-                    'date' => $date->toDateString(),
-                    'supplies_created' => $initialSupplies->count(),
-                ], 200);
-            });
-
-        } catch (\Throwable $e) {
-
-            Log::critical('🔥 Supply generation failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            Log::info('🔒 Supply generation completed', [
+                'dates' => $dates->map(
+                    fn($d) => $d->toDateString()
+                ),
             ]);
 
             return response()->json([
-                'status' => false,
-                'message' => 'Failed to generate supply',
-            ], 500);
-        }
-    }
+                'status' => true,
+                'message' => 'Supply generated successfully',
+                'dates' => $dates->map(
+                    fn($d) => $d->toDateString()
+                ),
+                'total_dates' => $dates->count(),
+            ], 200);
+        });
 
+    } catch (\Throwable $e) {
+
+        Log::critical('🔥 Supply generation failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to generate supply',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
     public function getSupplyItemsByEmployee(Request $request, $employeeId)
     {
         try {
